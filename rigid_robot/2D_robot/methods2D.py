@@ -1,50 +1,33 @@
 import numpy as np
 
 
-class SE3LieAlgebra:
+class SE2LieAlgebra:
     """
-    SE(3) Lie group / se(3) Lie algebra utilities.
+    SE(2) Lie group / se(2) Lie algebra utilities.
 
-    Convention: xi = [v1, v2, v3, w1, w2, w3] in R^6  (linear first, angular second)
-    T in SE(3) is a 4x4 homogeneous matrix:
+    Convention: xi = [v1, v2, omega] in R^3
+    T in SE(2) is a 3x3 homogeneous matrix:
         [ R  t ]
         [ 0  1 ]
-    where R in SO(3), t in R^3.
-
-    se(3) matrix (hat form):
-        Xi = [[ w×,  v ],
-              [ 0^T, 0 ]]
-    where w× is the 3x3 skew-symmetric matrix of w.
+    where R in SO(2), t in R^2.
     """
 
     _EPS = 1e-8
-
-    # ------------------------------------------------------------------ #
-    # Internal helper                                                      #
-    # ------------------------------------------------------------------ #
-
-    def _skew(self, w: np.ndarray) -> np.ndarray:
-        """3-vector -> 3x3 skew-symmetric matrix."""
-        return np.array([[    0, -w[2],  w[1]],
-                         [ w[2],     0, -w[0]],
-                         [-w[1],  w[0],     0]], dtype=float)
 
     # ------------------------------------------------------------------ #
     # Algebra operators                                                    #
     # ------------------------------------------------------------------ #
 
     def hat(self, xi: np.ndarray) -> np.ndarray:
-        """Map R^6 -> se(3): vector to 4x4 skew matrix."""
-        v1, v2, v3, w1, w2, w3 = xi
-        return np.array([[  0, -w3,  w2, v1],
-                         [ w3,   0, -w1, v2],
-                         [-w2,  w1,   0, v3],
-                         [  0,   0,   0,  0]], dtype=float)
+        """Map R^3 -> se(2): vector to skew-symmetric matrix."""
+        v1, v2, w = xi
+        return np.array([[ 0, -w, v1],
+                         [ w,  0, v2],
+                         [ 0,  0,  0]], dtype=float)
 
     def vee(self, Xi: np.ndarray) -> np.ndarray:
-        """Map se(3) -> R^6: 4x4 matrix to vector (inverse of hat)."""
-        return np.array([Xi[0, 3], Xi[1, 3], Xi[2, 3],   # v1, v2, v3
-                         Xi[2, 1], Xi[0, 2], Xi[1, 0]])  # w1, w2, w3
+        """Map se(2) -> R^3: matrix to vector (inverse of hat)."""
+        return np.array([Xi[0, 2], Xi[1, 2], Xi[1, 0]])
 
     def bracket(self, xi1: np.ndarray, xi2: np.ndarray) -> np.ndarray:
         """Lie bracket [xi1, xi2] = vee(hat(xi1) @ hat(xi2) - hat(xi2) @ hat(xi1))."""
@@ -55,12 +38,12 @@ class SE3LieAlgebra:
     # ------------------------------------------------------------------ #
 
     def inverse(self, T: np.ndarray) -> np.ndarray:
-        """Inverse of T in SE(3): T^{-1} = [R^T, -R^T t; 0, 1]."""
-        R = T[:3, :3]
-        t = T[:3,  3]
-        T_inv = np.eye(4)
-        T_inv[:3, :3] = R.T
-        T_inv[:3,  3] = -R.T @ t
+        """Inverse of T in SE(2): T^{-1} = [R^T, -R^T t; 0, 1]."""
+        R = T[:2, :2]
+        t = T[:2, 2]
+        T_inv = np.eye(3)
+        T_inv[:2, :2] = R.T
+        T_inv[:2,  2] = -R.T @ t
         return T_inv
 
     # ------------------------------------------------------------------ #
@@ -69,105 +52,108 @@ class SE3LieAlgebra:
 
     def exp(self, Xi: np.ndarray) -> np.ndarray:
         """
-        Exponential map se(3) matrix -> SE(3).
+        Exponential map se(2) matrix -> SE(2).
 
-        Xi = [[ w×,  v ],
-              [ 0^T, 0 ]]
+        Xi =
+        [[ 0, -w, v1],
+        [ w,  0, v2],
+        [ 0,  0,  0]]
         """
-        v     = Xi[:3, 3]
-        W     = Xi[:3, :3]                                          # skew(w)
-        theta = np.sqrt(W[2, 1]**2 + W[0, 2]**2 + W[1, 0]**2)    # |w|
 
-        T = np.eye(4)
-        if theta < self._EPS:
-            T[:3, :3] = np.eye(3) + W
-            T[:3,  3] = (np.eye(3) + 0.5 * W) @ v
+        v = Xi[:2, 2]
+        w = Xi[1, 0]
+        c, s = np.cos(w), np.sin(w)
+        R = np.array([
+            [c, -s],
+            [s,  c]
+        ])
+        J = np.array([
+            [0, -1],
+            [1,  0]
+        ])
+        if np.abs(w) < self._EPS:
+            V = np.eye(2) + 0.5 * w * J
         else:
-            W2   = W @ W
-            s, c = np.sin(theta), np.cos(theta)
-            R    = np.eye(3) + (s / theta) * W + ((1 - c) / theta**2) * W2
-            V    = np.eye(3) + ((1 - c) / theta**2) * W + ((theta - s) / theta**3) * W2
-            T[:3, :3] = R
-            T[:3,  3] = V @ v
+            V = np.array([
+                [s, -(1 - c)],
+                [1 - c, s]
+            ]) / w
+        t = V @ v
+        T = np.eye(3)
+        T[:2, :2] = R
+        T[:2, 2] = t
 
         return T
 
+
     def log(self, T: np.ndarray) -> np.ndarray:
         """
-        Logarithmic map SE(3) -> se(3) matrix.
+        Logarithmic map SE(2) matrix -> se(2) matrix.
 
-        Returns Xi = [[ w×,  v ],
-                      [ 0^T, 0 ]]
+        Returns Xi =
+        [[ 0, -w, v1],
+        [ w,  0, v2],
+        [ 0,  0,  0]]
         """
-        R = T[:3, :3]
-        t = T[:3,  3]
-
-        cos_theta = np.clip((np.trace(R) - 1) / 2, -1.0, 1.0)
-        theta     = np.arccos(cos_theta)
-
-        Xi = np.zeros((4, 4))
-        if theta < self._EPS:
-            W     = (R - R.T) / 2
-            V_inv = np.eye(3) - W / 2
+        R = T[:2, :2]
+        t = T[:2, 2]
+        w = np.arctan2(R[1, 0], R[0, 0])
+        J = np.array([
+            [0, -1],
+            [1,  0]
+        ])
+        if np.abs(w) < self._EPS:
+            V_inv = np.eye(2) - 0.5 * w * J
         else:
-            W     = (theta / (2 * np.sin(theta))) * (R - R.T)
-            W2    = W @ W
-            coeff = (2 * np.sin(theta) - theta * (1 + np.cos(theta))) \
-                    / (2 * theta**2 * np.sin(theta))
-            V_inv = np.eye(3) - W / 2 + coeff * W2
+            half_w = 0.5 * w
+            factor = half_w / np.tan(half_w)
+            V_inv = np.array([
+                [factor, half_w],
+                [-half_w, factor]
+            ])
+        v = V_inv @ t
+        Xi = np.zeros((3, 3))
+        Xi[0, 1] = -w
+        Xi[1, 0] = w
+        Xi[0, 2] = v[0]
+        Xi[1, 2] = v[1]
 
-        Xi[:3, :3] = W
-        Xi[:3,  3] = V_inv @ t
         return Xi
-
     # ------------------------------------------------------------------ #
-    # Adjoint representations                                              #
+    # Adjoint representation                                               #
     # ------------------------------------------------------------------ #
 
     def adjoint(self, T: np.ndarray) -> np.ndarray:
         """
-        Group adjoint Ad_T in R^{6x6} such that
+        Adjoint matrix Ad_T in R^{3x3} such that
         Ad_T @ xi = vee(T @ hat(xi) @ T^{-1}).
-
-        Ad_T = [[ R,    hat(t) @ R ],
-                [ 0_33, R          ]]
         """
-        R     = T[:3, :3]
-        t_hat = self._skew(T[:3, 3])
-        Ad    = np.zeros((6, 6))
-        Ad[:3, :3] = R
-        Ad[:3, 3:] = t_hat @ R
-        Ad[3:, 3:] = R
+        R = T[:2, :2]
+        t = T[:2, 2]
+        Ad = np.eye(3)
+        Ad[:2, :2] = R
+        Ad[0,  2]  =  t[1]
+        Ad[1,  2]  = -t[0]
         return Ad
 
     def coadjoint(self, Xi: np.ndarray) -> np.ndarray:
         """
-        Co-adjoint ad_xi^* = ad_xi^T from a 4x4 se(3) matrix Xi = hat(xi).
+        Co-adjoint ad_xi^* = ad_xi^T from a 3x3 se(2) matrix Xi = hat(xi).
         Used in the Euler-Poincaré equation: M*dxi/dt = coad(Xi) @ (M @ xi) + F
-
-        coad = [[ W^T,      0_33 ],
-                [ hat(v),   W^T  ]]
-        where W = hat(w) so W^T = -hat(w).
         """
-        v = Xi[:3, 3]
-        W = Xi[:3, :3]   # hat(w), skew-symmetric
-        coad = np.zeros((6, 6))
-        coad[:3, :3] = W.T
-        coad[3:, :3] = self._skew(v)
-        coad[3:, 3:] = W.T
-        return coad
+        v1, v2, w = Xi[0, 2], Xi[1, 2], Xi[1, 0]
+        return np.array([[ 0,  w,  0],
+                         [-w,  0,  0],
+                         [v2, -v1,  0]], dtype=float)
 
     # ------------------------------------------------------------------ #
     # Convenience                                                          #
     # ------------------------------------------------------------------ #
 
-    def rotation_matrix(self, axis: np.ndarray, angle: float) -> np.ndarray:
-        """SO(3) rotation matrix via Rodrigues' formula (axis need not be unit)."""
-        axis = np.asarray(axis, dtype=float)
-        axis = axis / np.linalg.norm(axis)
-        W    = self._skew(axis)
-        c, s = np.cos(angle), np.sin(angle)
-        return np.eye(3) + s * W + (1 - c) * (W @ W)
+    def rotation_matrix(self, theta: float) -> np.ndarray:
+        """2x2 rotation matrix for angle theta."""
+        c, s = np.cos(theta), np.sin(theta)
+        return np.array([[c, -s], [s, c]])
 
     def compose(self, T1: np.ndarray, T2: np.ndarray) -> np.ndarray:
         """Group composition T1 @ T2."""

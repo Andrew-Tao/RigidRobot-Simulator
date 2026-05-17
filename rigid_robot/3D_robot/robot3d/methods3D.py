@@ -91,6 +91,17 @@ class SE3LieAlgebra:
             T[:3,  3] = V @ v
 
         return T
+    
+    def exp_SO3(self, W: np.ndarray) -> np.ndarray:
+        """Exponential map for SO(3) rotation matrix."""
+        theta = np.sqrt(W[2, 1]**2 + W[0, 2]**2 + W[1, 0]**2)
+        if theta < self._EPS:
+            return np.eye(3) + W
+        else:
+            W2   = W @ W
+            s, c = np.sin(theta), np.cos(theta)
+            R    = np.eye(3) + (s / theta) * W + ((1 - c) / theta**2) * W2
+            return R
 
     def log(self, T: np.ndarray) -> np.ndarray:
         """
@@ -143,6 +154,51 @@ class SE3LieAlgebra:
 
         return ad
 
+    def coadjoint(self, Xi: np.ndarray) -> np.ndarray:
+        """
+        Co-adjoint ad_xi^* = ad_xi^T from a 4x4 se(3) matrix Xi = hat(xi).
+        Used in the Euler-Poincaré equation: dμ/dt = coad(Xi) μ + F
+
+        With twist ordering xi = [v, w] (linear first, angular second):
+
+            ad  = [[ W,      0   ],      coad = ad^T = [[ W^T,   hat(v)^T ],
+                   [ hat(v), W   ]]                     [ 0,      W^T      ]]
+
+        where W = hat(w), so W^T = -W.
+        """
+        v = Xi[:3, 3]
+        W = Xi[:3, :3]  # hat(w), skew-symmetric
+        
+        coad = np.zeros((6, 6))
+        coad[:3, :3] = W.T
+        coad[:3, 3:] = self._skew(v).T
+        coad[3:, 3:] = W.T
+        return coad
+    
+
+    def exp_adjoint(self, Xi: np.ndarray) -> np.ndarray:
+   
+        v = Xi[:3, 3]
+        W = Xi[:3, :3]  # hat(w), skew-symmetric
+       
+        W_negative = -W
+        W2 = W_negative @ W_negative
+        theta = np.sqrt(W_negative[2, 1]**2 + W_negative[0, 2]**2 + W_negative[1, 0]**2)
+        s, c = np.sin(theta), np.cos(theta)
+
+        if theta < self._EPS:
+            R = np.eye(3) 
+        else:
+            R   = np.eye(3) + ((1 - c) / theta**2) * W + ((theta - s) / theta**3) * W2
+
+        exp_ad = np.zeros((6, 6))
+        exp_ad[:3, :3] =  self.exp_SO3(-W)
+
+        exp_ad[3:, :3] = self.exp_SO3(-W) @ R @ (-self._skew(v))
+        exp_ad[3:, 3:] = self.exp_SO3(-W)
+
+        return exp_ad
+
     # ------------------------------------------------------------------ #
     # Convenience                                                          #
     # ------------------------------------------------------------------ #
@@ -162,10 +218,10 @@ class SE3LieAlgebra:
     import numpy as np
 
 # Additional utility function for converting roll-pitch-yaw to rotation matrix
-def rpy_to_Q(roll, pitch, yaw):
-    phi = roll
-    theta = pitch
-    psi = yaw
+def rpy_to_Q(orientation):
+    phi = orientation[0]
+    theta = orientation[1]
+    psi = orientation[2]
 
     cphi, sphi = np.cos(phi), np.sin(phi)
     ctheta, stheta = np.cos(theta), np.sin(theta)

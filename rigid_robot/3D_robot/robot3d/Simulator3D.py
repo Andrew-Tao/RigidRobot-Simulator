@@ -1,9 +1,9 @@
 import numpy as np 
-from methods3D import SE2LieAlgebra
+from .methods3D import SE3LieAlgebra
 import matplotlib.pyplot as plt
-lie3 = SE2LieAlgebra()
+lie3 = SE3LieAlgebra()
 
-class Simulator2D:
+class Simulator3D:
     def __init__(self, time_step = 0.1, duration = 10.0, control_logic: callable = None,stepper = 'explicit_euler'):
         self.robot = list()  # List of robots in the simulation
         self.time_step = time_step
@@ -16,8 +16,6 @@ class Simulator2D:
         self.force_collection = []  # To store forces over time
         self.momentum_collection = []  # To store momentum over time
         
-
-
     def run(self):
         if len(self.time_collection) * self.time_step >= self.duration:
             return False  # Simulation finished
@@ -43,12 +41,12 @@ class Simulator2D:
 
             # Euler-Poincaré: μ_{k+1} = μ_k + (coad(V_k) · μ_k + F_k) · dt
             #TODO: Is this correct or not?
-            momentum_kp1 = (lie3.exp(lie3.coadjoint(-velocity_k_matrix*self.time_step)) @ momentum_k) + (force_k * self.time_step)
-          
+            momentum_kp1 = (lie3.exp_adjoint(-velocity_k_matrix*self.time_step) @ momentum_k) + (force_k * self.time_step)
+
         # -------------------Symplectic Euler Integration -------------------
         if self.stepper == 'symplectic_euler':
 
-            momentum_kp1 = (lie3.exp(lie3.coadjoint(-velocity_k_matrix*self.time_step)) @ momentum_k) + (force_k * self.time_step)
+            momentum_kp1 = (lie3.exp_adjoint(-velocity_k_matrix*self.time_step) @ momentum_k) + (force_k * self.time_step)
             velocity_kp1_matrix = lie3.hat(np.linalg.inv(self.robot[0].mass_matrix) @ momentum_kp1)
             posture_kp1 = posture_k @ lie3.exp(velocity_kp1_matrix * self.time_step)
             
@@ -60,7 +58,7 @@ class Simulator2D:
            posture_k_phalf = posture_k @ lie3.exp(velocity_k_matrix * (self.time_step / 2))
            self.robot[0].posture = posture_k_phalf
            force_k_phalf = self.robot[0].compute_force_local(self.robot[0].control_input)
-           momentum_kp1 = (lie3.exp(lie3.coadjoint(-velocity_k_matrix*self.time_step)) @ momentum_k) + (force_k_phalf * self.time_step)
+           momentum_kp1 = (lie3.exp_adjoint(-velocity_k_matrix*self.time_step) @ momentum_k) + (force_k_phalf * self.time_step)
            posture_kp1 = posture_k_phalf @ lie3.exp(velocity_k_matrix * (self.time_step / 2))
 
             # Recover velocity matrix: ξ_{k+1} = M⁻¹ · μ_{k+1}

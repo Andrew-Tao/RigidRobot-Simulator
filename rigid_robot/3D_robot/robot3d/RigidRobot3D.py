@@ -1,11 +1,11 @@
-from methods3D import SE3LieAlgebra, rpy_to_Q
+from .methods3D import SE3LieAlgebra, rpy_to_Q
 import numpy as np
 import matplotlib.pyplot as plt
 lie3 = SE3LieAlgebra()
 
 
 
-class RigidRobot2D:
+class RigidRobot3D:
     def __init__(
             self, 
             position: np.ndarray, 
@@ -35,7 +35,7 @@ class RigidRobot2D:
         self.thickness = thickness
         self.posture = self.compute_posture(position, orientation)
         self.velocity_matrix = self.compute_velocity_matrix(linear_velocity, angular_velocity)
-        self.mass_matrix = np.diag([mass, mass, inertia])  # Mass matrix in SE(2)
+        self.mass_matrix = np.diag([mass,mass,mass, inertia[0], inertia[1], inertia[2]])  # Mass matrix in SE(3)
         self.momentum = self.mass_matrix @ lie3.vee(self.velocity_matrix)  # 3-vector μ = M·ξ
         self.environment_resitriction = None
         self.force = None  # Generalized force in R^3 vector form [f_x, f_y, tau]
@@ -60,29 +60,31 @@ class RigidRobot2D:
         velocity_matrix = lie3.hat(velocity_vector)
         return velocity_matrix
 
-    def compute_force_local(self, control_input):
-        #TODO：Implement Contact model with the Wall and Friction
+    def compute_force_local(self, control_input: float, spring_anchor_point=np.array([0.0, 0.0, 0.0]), spring_stiffness=1):
 
-        v1, v2 = self.velocity_matrix[:2, 2]   # body-frame linear velocity
-        omega   = self.velocity_matrix[1, 0]    # angular velocity
-        d  = self.track_width_between_wheels
-        mu = self.friction_coefficient
-
-        # Wheel longitudinal velocities in body frame
-        v_l = v1 - omega * (d / 2)
-        v_r = v1 + omega * (d / 2)
+        damping_coefficient = 0.1
+        position = self.posture[:3, 3]
+        orientation_Q = self.posture[:3, :3]
+        v1, v2, v3 = self.velocity_matrix[:3, 3]   # body-frame linear velocity
+        omega_x, omega_y, omega_z   = self.velocity_matrix[1, 0], self.velocity_matrix[2, 0], self.velocity_matrix[2, 1]    # angular velocity
+        spring_anchor_point_local = np.linalg.inv(orientation_Q) @ (spring_anchor_point - position)
 
 
-        force_l = control_input[0] - mu * v_l
-        force_r = control_input[1] - mu * v_r
-        #print(f"v_l: {v_l:.3f}, v_r: {v_r:.3f}, force_l: {force_l:.3f}, force_r: {force_r:.3f}")
+        linear_spring_force_local =  spring_anchor_point_local * spring_stiffness
+        print(f"linear_spring_force_local: {linear_spring_force_local}")
 
-        f_x = force_l + force_r
-        #print(f"force_l: {force_l:.3f}, force_r: {force_r:.3f}, f_x: {f_x:.3f}")
-        f_y = 0.0
-        tau = (force_r - force_l) * (d / 2)
+        f_x, f_y, f_z = linear_spring_force_local - damping_coefficient * np.array([v1, v2, v3])
+        f_z += control_input  # Add control input as vertical force
+        print("fz:", f_z)
+        print(f"v1:{v1}, v2:{v2}, v3:{v3}, omega_x:{omega_x}, omega_y:{omega_y}, omega_z:{omega_z}")
 
-        return np.array([f_x, f_y, tau])
+        #TODO: Add torque spring
+        tau_x = - damping_coefficient * omega_x
+        tau_y = - damping_coefficient * omega_y
+        tau_z = - damping_coefficient * omega_z
+    
+
+        return np.array([f_x, f_y, f_z, tau_x, tau_y, tau_z])
 
     def contact(self, environment):
         """
@@ -104,3 +106,9 @@ class RigidRobot2D:
             
         return False  # No contact detected
     
+
+
+class ConnectedRigidRobots3D:
+    def __init__(self, robot1: RigidRobot3D, robot2: RigidRobot3D):
+        self.robot1 = robot1
+        self.robot2 = robot2

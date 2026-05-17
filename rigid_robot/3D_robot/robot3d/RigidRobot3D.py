@@ -2,6 +2,7 @@ from .methods3D import SE3LieAlgebra, rpy_to_Q
 import numpy as np
 import matplotlib.pyplot as plt
 lie3 = SE3LieAlgebra()
+from scipy.spatial.transform import Rotation as R
 
 
 
@@ -60,31 +61,58 @@ class RigidRobot3D:
         velocity_matrix = lie3.hat(velocity_vector)
         return velocity_matrix
 
-    def compute_force_local(self, control_input: float, spring_anchor_point=np.array([0.0, 0.0, 0.0]), spring_stiffness=1):
+    def compute_force_local(
+        self, 
+        control_input: np.ndarray, 
+        spring_anchor_point=np.array([0.0, 0.0, 0.0]), 
+        spring_stiffness=1,
+        torque_spring_anchor_orientation=np.diag([1.0, 1.0, 1.0]),
+        torque_spring_stiffness=1,
+        spring_original_length=0.04
+        ):
 
         damping_coefficient = 0.1
         position = self.posture[:3, 3]
         orientation_Q = self.posture[:3, :3]
+       
+        Q_error = torque_spring_anchor_orientation @ orientation_Q.T
+
+        #print(f"orentation_Q: {orientation_Q}")
+
+
         v1, v2, v3 = self.velocity_matrix[:3, 3]   # body-frame linear velocity
-        omega_x, omega_y, omega_z   = self.velocity_matrix[1, 0], self.velocity_matrix[2, 0], self.velocity_matrix[2, 1]    # angular velocity
+        omega_x, omega_y, omega_z   = self.velocity_matrix[2, 1], self.velocity_matrix[0, 2], self.velocity_matrix[1, 0]    # angular velocity
+        omega = np.array([omega_x, omega_y, omega_z])
+
         spring_anchor_point_local = np.linalg.inv(orientation_Q) @ (spring_anchor_point - position)
+        
+        spring_current_length = np.linalg.norm(spring_anchor_point_local)
+        delta_length = spring_current_length - spring_original_length
+        if spring_current_length > 1e-6:
+            unit_anchor_vector_local = spring_anchor_point_local / spring_current_length
+        else:
+            unit_anchor_vector_local = np.zeros(3)
+        
 
 
-        linear_spring_force_local =  spring_anchor_point_local * spring_stiffness
-        print(f"linear_spring_force_local: {linear_spring_force_local}")
-
+        linear_spring_force_local = (delta_length * unit_anchor_vector_local) * spring_stiffness
+       
         f_x, f_y, f_z = linear_spring_force_local - damping_coefficient * np.array([v1, v2, v3])
-        f_z += control_input  # Add control input as vertical force
-        print("fz:", f_z)
-        print(f"v1:{v1}, v2:{v2}, v3:{v3}, omega_x:{omega_x}, omega_y:{omega_y}, omega_z:{omega_z}")
-
+       
         #TODO: Add torque spring
-        tau_x = - damping_coefficient * omega_x
-        tau_y = - damping_coefficient * omega_y
-        tau_z = - damping_coefficient * omega_z
-    
+        # Torque spring will generate a resistanct torque in all three axes to resist changes in orientation
+        theta = R.from_matrix(Q_error).as_rotvec()
+        print(f"theta: {theta}")
+        print(f"omega: {omega}")
+        print(f"momentum: {self.momentum}")
+        tau_x, tau_y, tau_z = - torque_spring_stiffness * theta - damping_coefficient * omega
+ 
+        # Add control Inputs (all control inputs are applied as the force or toque in local framework)
+        total_force_local = np.array([f_x, f_y, f_z, tau_x, tau_y, tau_z]) + control_input
+         
 
-        return np.array([f_x, f_y, f_z, tau_x, tau_y, tau_z])
+        return total_force_local
+    
 
     def contact(self, environment):
         """

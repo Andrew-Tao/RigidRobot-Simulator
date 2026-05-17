@@ -246,3 +246,21 @@ def rpy_to_Q(orientation):
     ])
 
     return Q
+
+def rotation_matrix_to_euler_zyx(Q):
+    """
+    Convert rotation matrix Q to ZYX Euler angles:
+    yaw about z, pitch about y, roll about x.
+
+    Q = Rz(yaw) @ Ry(pitch) @ Rx(roll)
+    """
+
+    q11, q12, q13 = Q[0, :]
+    q21, q22, q23 = Q[1, :]
+    q31, q32, q33 = Q[2, :]
+
+    pitch = np.arcsin(-q31)
+    roll  = np.arctan2(q32, q33)
+    yaw   = np.arctan2(q21, q11)
+
+    return roll, pitch, yaw

@@ -158,3 +158,35 @@ class SE3LieAlgebra:
     def compose(self, T1: np.ndarray, T2: np.ndarray) -> np.ndarray:
         """Group composition T1 @ T2."""
         return T1 @ T2
+    
+    import numpy as np
+
+# Additional utility function for converting roll-pitch-yaw to rotation matrix
+def rpy_to_Q(roll, pitch, yaw):
+    phi = roll
+    theta = pitch
+    psi = yaw
+
+    cphi, sphi = np.cos(phi), np.sin(phi)
+    ctheta, stheta = np.cos(theta), np.sin(theta)
+    cpsi, spsi = np.cos(psi), np.sin(psi)
+
+    Q = np.array([
+        [
+            cpsi * ctheta,
+            cpsi * stheta * sphi - spsi * cphi,
+            cpsi * stheta * cphi + spsi * sphi
+        ],
+        [
+            spsi * ctheta,
+            spsi * stheta * sphi + cpsi * cphi,
+            spsi * stheta * cphi - cpsi * sphi
+        ],
+        [
+            -stheta,
+            ctheta * sphi,
+            ctheta * cphi
+        ]
+    ])
+
+    return Q

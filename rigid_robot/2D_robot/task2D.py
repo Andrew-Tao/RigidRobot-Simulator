@@ -14,8 +14,8 @@ def boundary(position: np.ndarray) -> bool:
     return bool(in_bottom or in_middle or in_top)
 
 def control_logic(time):
-    input_force_left = 1.0 if time < 5.0 else 0.0
-    input_force_right = 0.0
+    input_force_left = 0.15 if time < 0.2 else 0.0
+    input_force_right = 0.14 if time < 0.2 else 0.0
     return np.array([input_force_left, input_force_right])
     
 if __name__ == "__main__":
@@ -36,7 +36,7 @@ if __name__ == "__main__":
     
     simulator = Simulator2D(
         time_step=2, 
-        duration = 10000.0, 
+        duration = 10.0, 
         control_logic=control_logic, 
         stepper='position_verlet')
     
@@ -62,6 +62,7 @@ if __name__ == "__main__":
     time = np.array(simulator.time_collection)
 
     energy  = np.array([0.5 * np.dot(momentum[i], lie2.vee(velocity_matrix[i])) for i in range(len(simulator.posture_collection))])
+    """
     
     
     #plt.plot(time, velocity, label='Linear Velocity (v_x)')
@@ -82,7 +83,6 @@ if __name__ == "__main__":
     plt.grid()
     plt.show()
     """
-
     # ── Trajectory plot ───────────────────────────────────────────────
     import matplotlib.pyplot as plt
     import matplotlib.patches as mpatches
@@ -159,4 +159,4 @@ if __name__ == "__main__":
 
     plt.tight_layout()
     plt.show()
-    """
+ 

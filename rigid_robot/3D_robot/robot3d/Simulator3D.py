@@ -1,6 +1,8 @@
 import numpy as np 
 from .methods3D import SE3LieAlgebra
 import matplotlib.pyplot as plt
+from scipy.spatial.transform import Rotation as R
+
 lie3 = SE3LieAlgebra()
 
 class Simulator3D:
@@ -15,7 +17,10 @@ class Simulator3D:
         self.velocity_matrix_collection = []  # To store robot velocities over time
         self.force_collection = []  # To store forces over time
         self.momentum_collection = []  # To store momentum over time
-        
+        # Since the posture matrix can no longer correctly track the constitution relationship
+        # after the robot rotate 360 degrees. So wee need a true omega tracking twist over time
+
+
     def run(self):
         if len(self.time_collection) * self.time_step >= self.duration:
             return False  # Simulation finished
@@ -37,11 +42,17 @@ class Simulator3D:
 
         if self.stepper == 'explicit_euler':
             # Kinematics: T_{k+1} = T_k @ exp(ξ_k · dt)
+            #print(f"posture_k:\n {posture_k}")
             posture_kp1 = posture_k @ lie3.exp(velocity_k_matrix * self.time_step)
+
+            #print(f"exp(velocity_k_matrix * self.time_step):\n {lie3.exp(velocity_k_matrix * self.time_step)}")
+            #print(f"velocity_k_matrix:\n {velocity_k_matrix}")
 
             # Euler-Poincaré: μ_{k+1} = μ_k + (coad(V_k) · μ_k + F_k) · dt
             #TODO: Is this correct or not?
             momentum_kp1 = (lie3.exp_adjoint(-velocity_k_matrix*self.time_step) @ momentum_k) + (force_k * self.time_step)
+            #print(f"momentum_kp1: {momentum_kp1}")
+            #print("\n")
 
         # -------------------Symplectic Euler Integration -------------------
         if self.stepper == 'symplectic_euler':
@@ -68,6 +79,9 @@ class Simulator3D:
         self.robot[0].posture = posture_kp1
         self.robot[0].momentum = momentum_kp1
         self.robot[0].velocity_matrix = lie3.hat(xi_kp1)
+        velocity_temp = np.array([self.robot[0].velocity_matrix[2, 1], self.robot[0].velocity_matrix[0, 2], self.robot[0].velocity_matrix[1, 0]]) # Angular Velocity
+        delta_orientation = velocity_temp * self.time_step
+        self.robot[0].orientation = self.robot[0].orientation + delta_orientation
 
     def record(self):
         self.time_collection.append(len(self.time_collection) * self.time_step)

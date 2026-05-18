@@ -180,10 +180,10 @@ class SE3LieAlgebra:
    
         v = Xi[:3, 3]
         W = Xi[:3, :3]  # hat(w), skew-symmetric
+        W2 = W @ W
        
-        W_negative = -W
-        W2 = W_negative @ W_negative
-        theta = np.sqrt(W_negative[2, 1]**2 + W_negative[0, 2]**2 + W_negative[1, 0]**2)
+ 
+        theta = np.sqrt(W[2, 1]**2 + W[0, 2]**2 + W[1, 0]**2)
         s, c = np.sin(theta), np.cos(theta)
 
         if theta < self._EPS:
@@ -192,12 +192,15 @@ class SE3LieAlgebra:
             R   = np.eye(3) + ((1 - c) / theta**2) * W + ((theta - s) / theta**3) * W2
 
         exp_ad = np.zeros((6, 6))
-        exp_ad[:3, :3] =  self.exp_SO3(-W)
+        exp_ad[:3, :3] =  self.exp_SO3(W)
 
-        exp_ad[3:, :3] = self.exp_SO3(-W) @ R @ (-self._skew(v))
-        exp_ad[3:, 3:] = self.exp_SO3(-W)
+        exp_ad[3:, :3] = self.exp_SO3(W) @ R @ (self._skew(v))
+        exp_ad[3:, 3:] = self.exp_SO3(W)
+
+        #print(f"exp_adjoint:\n {exp_ad}")
 
         return exp_ad
+    
 
     # ------------------------------------------------------------------ #
     # Convenience                                                          #

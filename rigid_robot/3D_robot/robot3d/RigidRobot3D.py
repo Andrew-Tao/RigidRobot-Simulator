@@ -33,6 +33,9 @@ class RigidRobot3D:
         """
 
         self.radius = radius
+        self.orientation = orientation
+        # Since the posture matrix can no longer correctly track the constitution relationship
+        # after the robot rotate 360 degrees. So wee need a true omega tracking twist over time
         self.thickness = thickness
         self.posture = self.compute_posture(position, orientation)
         self.velocity_matrix = self.compute_velocity_matrix(linear_velocity, angular_velocity)
@@ -67,7 +70,7 @@ class RigidRobot3D:
         spring_anchor_point=np.array([0.0, 0.0, 0.0]), 
         spring_stiffness=1,
         torque_spring_anchor_orientation=np.diag([1.0, 1.0, 1.0]),
-        torque_spring_stiffness=1,
+        torque_spring_stiffness=0.0001,
         spring_original_length=0.04
         ):
 
@@ -101,11 +104,15 @@ class RigidRobot3D:
        
         #TODO: Add torque spring
         # Torque spring will generate a resistanct torque in all three axes to resist changes in orientation
-        theta = R.from_matrix(Q_error).as_rotvec()
+        theta = self.orientation.copy()
         print(f"theta: {theta}")
-        print(f"omega: {omega}")
-        print(f"momentum: {self.momentum}")
-        tau_x, tau_y, tau_z = - torque_spring_stiffness * theta - damping_coefficient * omega
+        #print(f"omega: {omega}")
+        #print(f"momentum: {self.momentum}")
+        tau_x, tau_y, tau_z = - torque_spring_stiffness * theta  
+        print(tau_z)
+        #tau_x, tau_y, tau_z = np.zeros(3)  
+        
+        
  
         # Add control Inputs (all control inputs are applied as the force or toque in local framework)
         total_force_local = np.array([f_x, f_y, f_z, tau_x, tau_y, tau_z]) + control_input
@@ -134,7 +141,6 @@ class RigidRobot3D:
             
         return False  # No contact detected
     
-
 
 class ConnectedRigidRobots3D:
     def __init__(self, robot1: RigidRobot3D, robot2: RigidRobot3D):

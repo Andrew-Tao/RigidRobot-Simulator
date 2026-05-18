@@ -28,14 +28,14 @@ if __name__ == "__main__":
 
     def control_logic(time):
         # Apply an upward force for the first 5 seconds, then no control input
-        if time >0.0:
+        if time < 4:
             return np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])  
         else:
             return np.zeros(6)  # No control input
         
     simulator = Simulator3D(
         time_step = 0.1,
-        duration = 3.0,
+        duration = 10,
         control_logic = control_logic,  # No control input
         stepper = 'explicit_euler',  
     )
@@ -49,17 +49,21 @@ if __name__ == "__main__":
     time_collection = np.array(simulator.time_collection)
     posture_collection = np.array(simulator.posture_collection)  # Shape: (num_steps, 4, 4)
     position_over_time = posture_collection[:, :3, 3]  # Extract position (x, y, z) over time
+    velocity_matrix_collection = np.array(simulator.velocity_matrix_collection)  # Shape: (num_steps, 4, 4)
+    momentum_collection = np.array(simulator.momentum_collection)  # Shape: (num_steps
+    omega_x, omega_y, omega_z = velocity_matrix_collection[:, 2, 1], velocity_matrix_collection[:, 0, 2], velocity_matrix_collection[:, 0, 1]  # Extract angular velocities over time  
     position_colleiton_x = position_over_time[:, 0]
     position_colleiton_y = position_over_time[:, 1]
     position_colleiton_z = position_over_time[:, 2]
-    theta = np.array([R.from_matrix(posture_collection[i, :3, :3]).as_euler('xyz') for i in range(len(posture_collection))])  # Extract orientation (roll, pitch, yaw) over time
-    theta_x = theta[:, 0]
-    theta_y = theta[:, 1]
-    theta_z = theta[:, 2]
-
+    
+    theta_z = [0.0]
+    for i in range(len(omega_z)-1):
+        theta_z.append(theta_z[i]+ omega_z[i] * 0.01 )
+    theta_z = np.array(theta_z)
+    
     # Visualization
     plt.figure(figsize=(10, 6))
-    plt.plot(time_collection,theta, label='Z Rotation (Yaw)')
+    plt.plot(time_collection,omega_z, label='Z Rotation (Yaw)')
     plt.title('Z Rotation of the Robot Over Time')
     plt.xlabel('Time (s)')
     plt.ylabel('Z Rotation (rad)')

@@ -3,8 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 lie3 = SE3LieAlgebra()
 from scipy.spatial.transform import Rotation as R
-
-
+from dataclasses import dataclass
 
 class RigidRobot3D:
     def __init__(
@@ -121,18 +120,64 @@ class RigidRobot3D:
         return False  # No contact detected
     
 
+@dataclass
+class Connection:
+    to: int
+    spring_anchor_point_local_self: np.ndarray
+    spring_anchor_point_to: np.ndarray
+    spring_original_length: float
+    spring_stiffness: float
+    torque_spring_anchor_orientation: np.ndarray
+    torque_spring_stiffness: float
+
+@dataclass
+class ExternalForce:
+    external_force: np.ndarray
+    external_torque: np.ndarray
+
 class ConnectedRigidRobots3D:
     def __init__(self, robots:list[RigidRobot3D]):
-        self.robot = robots
+        self.robots = robots
+        self.connection_map = {i: None for i in range(len(self.robots))}
 
     def add_external_force(self):
         pass
 
+    def compute_force_local_individual_robot(self,robot_index:int):
+        connection = self.connection_map[robot_index]
+
+
     def add_connection(self,
         index_pairs:tuple,
-        spring_anchor_point_local_1=np.array([0.0, 0.0, 0.0]), # spring_anchor_point at the robot's local frame. Offset
-        spring_anchor_point_local_2 = np.array([0.0,0.0,0.0])
+        spring_anchor_point_local_1=np.array([0.0, 0.0, 0.0]), # spring_anchor_point at the robot's local frame. Offset to center of robot1
+        spring_anchor_point_local_2 = np.array([0.0,0.0,0.0]),  # spring_anchor_point at the robot's local frame. Offset to center of robot2
         spring_stiffness=1,
         torque_spring_anchor_orientation=np.diag([1.0, 1.0, 1.0]),
         torque_spring_stiffness=0.01,
-        spring_original_length=0.04)
+        spring_original_length=0.04
+        ):
+
+        "index_pair: (first robot index, second robot index)"
+        i, j = index_pairs
+
+        self.connection_map[i] = Connection(
+            to=j,
+            spring_anchor_point_local_self=spring_anchor_point_local_1,
+            spring_anchor_point_to=spring_anchor_point_local_2,
+            spring_original_length=spring_original_length,
+            spring_stiffness=spring_stiffness,
+            torque_spring_anchor_orientation=torque_spring_anchor_orientation,
+            torque_spring_stiffness=torque_spring_stiffness,
+        )
+
+        self.connection_map[j] = Connection(
+            to=i,
+            spring_anchor_point_local_self=spring_anchor_point_local_2,
+            spring_anchor_point_to=spring_anchor_point_local_1,
+            spring_original_length=spring_original_length,
+            spring_stiffness=spring_stiffness,
+            torque_spring_anchor_orientation=torque_spring_anchor_orientation,
+            torque_spring_stiffness=torque_spring_stiffness,
+        )
+        
+  

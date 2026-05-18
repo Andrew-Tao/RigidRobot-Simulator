@@ -53,8 +53,7 @@ class Simulator2D:
             velocity_kp1_matrix = lie2.hat(np.linalg.inv(self.robot[0].mass_matrix) @ momentum_kp1)
             posture_kp1 = posture_k @ lie2.exp(velocity_kp1_matrix * self.time_step)
             
-           
-
+            
         #---------------------Position Verlet Integration----------------------
         if self.stepper == 'position_verlet':
            

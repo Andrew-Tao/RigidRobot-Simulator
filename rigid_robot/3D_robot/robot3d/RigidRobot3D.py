@@ -80,6 +80,7 @@ class RigidRobot3D:
         v1, v2, v3 = self.velocity_matrix[:3, 3]   # body-frame linear velocity
         omega_x, omega_y, omega_z   = self.velocity_matrix[2, 1], self.velocity_matrix[0, 2], self.velocity_matrix[1, 0]    # angular velocity
         omega = np.array([omega_x, omega_y, omega_z])
+
         spring_anchor_point_local = np.linalg.inv(orientation_Q) @ (spring_anchor_point - position)
         spring_current_length = np.linalg.norm(spring_anchor_point_local)
         delta_length = spring_current_length - spring_original_length
@@ -138,29 +139,92 @@ class ExternalForce:
 class ConnectedRigidRobots3D:
     def __init__(self, robots:list[RigidRobot3D]):
         self.robots = robots
-        self.connection_map = {i: None for i in range(len(self.robots))}
+        self.connection_map = {i: list() for i in range(len(self.robots))}
+        #TODO: this is now just a place holder for empty external force
+        self.external_force = np.zeros(6)
 
     def add_external_force(self):
         pass
 
-    def compute_force_local_individual_robot(self,robot_index:int):
+    def compute_force_local_total_individual_robot(self,robot_index:int, external_force):
         connection = self.connection_map[robot_index]
+        number_of_connection = len(connection)
+        total_force = np.zeros(6)
+
+        for i in range(number_of_connection):
+            spring_anchor_point = self.robots[connection[i].to].posture[:3,3]
+            torque_spring_anchor_orientation = self.robots[connection[i].to].orientation
+            spring_stiffness = connection[i].spring_stiffness
+            torque_spring_stiffness = connection[i].torque_spring_stiffness
+            spring_original_length = connection[i].spring_original_length
+            total_force += self.compute_single_spring_force(
+                robot = self.robots[robot_index],
+                spring_anchor_point = spring_anchor_point,
+                torque_spring_anchor_orientation= torque_spring_anchor_orientation,
+                spring_stiffness= spring_stiffness,
+                torque_spring_stiffness= torque_spring_stiffness,
+                spring_original_length = spring_original_length,
+            )
+        total_force += self.robots[robot_index].control_input
+        total_force += self.external_force
+
+        return total_force
+
+    def compute_single_spring_force(
+        self, 
+        robot: RigidRobot3D,
+        spring_anchor_point=np.array([0.0, 0.0, 0.0]), 
+        torque_spring_anchor_orientation = np.array([0.0, 0.0, 0.0]),
+        spring_stiffness=1,
+        torque_spring_stiffness=0.01,
+        spring_original_length=0.04
+        ):
+
+        # TODO: Write a add_damping method
+        spinrg_damping_coefficient = 0.1
+        torque_spring_damping_coefficient = 0.0001
+
+        position = robot.posture[:3, 3]
+        orientation_Q = robot.posture[:3, :3]
+       
+        v1, v2, v3 = robot.velocity_matrix[:3, 3]   # body-frame linear velocity
+        omega_x, omega_y, omega_z   = robot.velocity_matrix[2, 1], robot.velocity_matrix[0, 2], robot.velocity_matrix[1, 0]    # angular velocity
+        omega = np.array([omega_x, omega_y, omega_z])
+
+        spring_anchor_point_local = np.linalg.inv(orientation_Q) @ (spring_anchor_point - position)
+        spring_current_length = np.linalg.norm(spring_anchor_point_local)
+        delta_length = spring_current_length - spring_original_length
+
+        if spring_current_length > 1e-6:
+            unit_anchor_vector_local = spring_anchor_point_local / spring_current_length
+        else:
+            unit_anchor_vector_local = np.zeros(3)
+        
+        linear_spring_force_local = (delta_length * unit_anchor_vector_local) * spring_stiffness
+        f_x, f_y, f_z = linear_spring_force_local -  spinrg_damping_coefficient * np.array([v1, v2, v3])
+        theta = robot.orientation.copy() - torque_spring_anchor_orientation
+        tau_x, tau_y, tau_z = - torque_spring_stiffness * theta - torque_spring_damping_coefficient * omega
+
+        total_force_local = np.array([f_x, f_y, f_z, tau_x, tau_y, tau_z])
+         
+        return total_force_local
 
 
     def add_connection(self,
         index_pairs:tuple,
+        # So far this will always be zero, No offset allowed
         spring_anchor_point_local_1=np.array([0.0, 0.0, 0.0]), # spring_anchor_point at the robot's local frame. Offset to center of robot1
         spring_anchor_point_local_2 = np.array([0.0,0.0,0.0]),  # spring_anchor_point at the robot's local frame. Offset to center of robot2
         spring_stiffness=1,
         torque_spring_anchor_orientation=np.diag([1.0, 1.0, 1.0]),
         torque_spring_stiffness=0.01,
-        spring_original_length=0.04
+        spring_original_length=0.04,
         ):
 
         "index_pair: (first robot index, second robot index)"
         i, j = index_pairs
 
-        self.connection_map[i] = Connection(
+        self.connection_map[i].append(Connection(
             to=j,
             spring_anchor_point_local_self=spring_anchor_point_local_1,
             spring_anchor_point_to=spring_anchor_point_local_2,
@@ -168,9 +232,9 @@ class ConnectedRigidRobots3D:
             spring_stiffness=spring_stiffness,
             torque_spring_anchor_orientation=torque_spring_anchor_orientation,
             torque_spring_stiffness=torque_spring_stiffness,
-        )
+        ))
 
-        self.connection_map[j] = Connection(
+        self.connection_map[j].append(Connection(
             to=i,
             spring_anchor_point_local_self=spring_anchor_point_local_2,
             spring_anchor_point_to=spring_anchor_point_local_1,
@@ -178,6 +242,6 @@ class ConnectedRigidRobots3D:
             spring_stiffness=spring_stiffness,
             torque_spring_anchor_orientation=torque_spring_anchor_orientation,
             torque_spring_stiffness=torque_spring_stiffness,
-        )
+        ))
         
   

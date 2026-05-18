@@ -124,6 +124,7 @@ class RigidRobot3D:
 @dataclass
 class Connection:
     to: int
+    to_base: bool
     spring_anchor_point_local_self: np.ndarray
     spring_anchor_point_to: np.ndarray
     spring_original_length: float
@@ -152,8 +153,8 @@ class ConnectedRigidRobots3D:
         total_force = np.zeros(6)
 
         for i in range(number_of_connection):
-            spring_anchor_point = self.robots[connection[i].to].posture[:3,3]
-            torque_spring_anchor_orientation = self.robots[connection[i].to].orientation
+            spring_anchor_point = self.robots[connection[i].to].posture[:3,3] if not connection[i].to_base else np.zeros(3)
+            torque_spring_anchor_orientation = self.robots[connection[i].to].orientation if not connection[i].to_base else np.zeros(3)
             spring_stiffness = connection[i].spring_stiffness
             torque_spring_stiffness = connection[i].torque_spring_stiffness
             spring_original_length = connection[i].spring_original_length
@@ -166,7 +167,7 @@ class ConnectedRigidRobots3D:
                 spring_original_length = spring_original_length,
             )
         total_force += self.robots[robot_index].control_input
-        total_force += self.external_force
+        total_force += external_force
 
         return total_force
 
@@ -211,7 +212,8 @@ class ConnectedRigidRobots3D:
 
 
     def add_connection(self,
-        index_pairs:tuple,
+        index_pairs:tuple, # If to_base is true, the second elment is ignored
+        to_base: bool,
         # So far this will always be zero, No offset allowed
         spring_anchor_point_local_1=np.array([0.0, 0.0, 0.0]), # spring_anchor_point at the robot's local frame. Offset to center of robot1
         spring_anchor_point_local_2 = np.array([0.0,0.0,0.0]),  # spring_anchor_point at the robot's local frame. Offset to center of robot2
@@ -226,6 +228,7 @@ class ConnectedRigidRobots3D:
 
         self.connection_map[i].append(Connection(
             to=j,
+            to_base= to_base,
             spring_anchor_point_local_self=spring_anchor_point_local_1,
             spring_anchor_point_to=spring_anchor_point_local_2,
             spring_original_length=spring_original_length,
@@ -234,14 +237,16 @@ class ConnectedRigidRobots3D:
             torque_spring_stiffness=torque_spring_stiffness,
         ))
 
-        self.connection_map[j].append(Connection(
-            to=i,
-            spring_anchor_point_local_self=spring_anchor_point_local_2,
-            spring_anchor_point_to=spring_anchor_point_local_1,
-            spring_original_length=spring_original_length,
-            spring_stiffness=spring_stiffness,
-            torque_spring_anchor_orientation=torque_spring_anchor_orientation,
-            torque_spring_stiffness=torque_spring_stiffness,
-        ))
-        
+        if not to_base:
+            self.connection_map[j].append(Connection(
+                to=i,
+                to_base = False,
+                spring_anchor_point_local_self=spring_anchor_point_local_2,
+                spring_anchor_point_to=spring_anchor_point_local_1,
+                spring_original_length=spring_original_length,
+                spring_stiffness=spring_stiffness,
+                torque_spring_anchor_orientation=torque_spring_anchor_orientation,
+                torque_spring_stiffness=torque_spring_stiffness,
+            ))
+            
   

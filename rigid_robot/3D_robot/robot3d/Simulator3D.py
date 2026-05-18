@@ -17,6 +17,7 @@ class Simulator3D:
         self.velocity_matrix_collection = []  # To store robot velocities over time
         self.force_collection = []  # To store forces over time
         self.momentum_collection = []  # To store momentum over time
+        self.orientation_collection = []
         # Since the posture matrix can no longer correctly track the constitution relationship
         # after the robot rotate 360 degrees. So wee need a true omega tracking twist over time
 
@@ -42,17 +43,9 @@ class Simulator3D:
 
         if self.stepper == 'explicit_euler':
             # Kinematics: T_{k+1} = T_k @ exp(ξ_k · dt)
-            #print(f"posture_k:\n {posture_k}")
             posture_kp1 = posture_k @ lie3.exp(velocity_k_matrix * self.time_step)
-
-            #print(f"exp(velocity_k_matrix * self.time_step):\n {lie3.exp(velocity_k_matrix * self.time_step)}")
-            #print(f"velocity_k_matrix:\n {velocity_k_matrix}")
-
             # Euler-Poincaré: μ_{k+1} = μ_k + (coad(V_k) · μ_k + F_k) · dt
-            #TODO: Is this correct or not?
             momentum_kp1 = (lie3.exp_adjoint(-velocity_k_matrix*self.time_step) @ momentum_k) + (force_k * self.time_step)
-            #print(f"momentum_kp1: {momentum_kp1}")
-            #print("\n")
 
         # -------------------Symplectic Euler Integration -------------------
         if self.stepper == 'symplectic_euler':
@@ -61,8 +54,6 @@ class Simulator3D:
             velocity_kp1_matrix = lie3.hat(np.linalg.inv(self.robot[0].mass_matrix) @ momentum_kp1)
             posture_kp1 = posture_k @ lie3.exp(velocity_kp1_matrix * self.time_step)
             
-           
-
         #---------------------Position Verlet Integration----------------------
         if self.stepper == 'position_verlet':
            
@@ -89,6 +80,7 @@ class Simulator3D:
         self.velocity_matrix_collection.append(self.robot[0].velocity_matrix.copy())
         self.force_collection.append(self.robot[0].compute_force_local(self.robot[0].control_input).copy())
         self.momentum_collection.append(self.robot[0].momentum.copy())
+        self.orientation_collection.append(self.robot[0].orientation.copy())
         
 def boundary(position: np.ndarray) -> bool:
     x, y = position

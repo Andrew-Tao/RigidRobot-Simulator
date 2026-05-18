@@ -70,7 +70,7 @@ class RigidRobot3D:
         spring_anchor_point=np.array([0.0, 0.0, 0.0]), 
         spring_stiffness=1,
         torque_spring_anchor_orientation=np.diag([1.0, 1.0, 1.0]),
-        torque_spring_stiffness=0.0001,
+        torque_spring_stiffness=0.01,
         spring_original_length=0.04
         ):
 
@@ -78,17 +78,10 @@ class RigidRobot3D:
         position = self.posture[:3, 3]
         orientation_Q = self.posture[:3, :3]
        
-        Q_error = torque_spring_anchor_orientation @ orientation_Q.T
-
-        #print(f"orentation_Q: {orientation_Q}")
-
-
         v1, v2, v3 = self.velocity_matrix[:3, 3]   # body-frame linear velocity
         omega_x, omega_y, omega_z   = self.velocity_matrix[2, 1], self.velocity_matrix[0, 2], self.velocity_matrix[1, 0]    # angular velocity
         omega = np.array([omega_x, omega_y, omega_z])
-
         spring_anchor_point_local = np.linalg.inv(orientation_Q) @ (spring_anchor_point - position)
-        
         spring_current_length = np.linalg.norm(spring_anchor_point_local)
         delta_length = spring_current_length - spring_original_length
         if spring_current_length > 1e-6:
@@ -96,31 +89,17 @@ class RigidRobot3D:
         else:
             unit_anchor_vector_local = np.zeros(3)
         
-
-
         linear_spring_force_local = (delta_length * unit_anchor_vector_local) * spring_stiffness
-       
         f_x, f_y, f_z = linear_spring_force_local - damping_coefficient * np.array([v1, v2, v3])
-       
-        #TODO: Add torque spring
-        # Torque spring will generate a resistanct torque in all three axes to resist changes in orientation
+
         theta = self.orientation.copy()
-        print(f"theta: {theta}")
-        #print(f"omega: {omega}")
-        #print(f"momentum: {self.momentum}")
-        tau_x, tau_y, tau_z = - torque_spring_stiffness * theta  
-        print(tau_z)
-        #tau_x, tau_y, tau_z = np.zeros(3)  
-        
-        
- 
+        tau_x, tau_y, tau_z = - torque_spring_stiffness * theta - 0.00002 * omega
+
         # Add control Inputs (all control inputs are applied as the force or toque in local framework)
         total_force_local = np.array([f_x, f_y, f_z, tau_x, tau_y, tau_z]) + control_input
          
-
         return total_force_local
     
-
     def contact(self, environment):
         """
         environment: func (position) -> True if within boundary, False otherwise)
@@ -143,6 +122,17 @@ class RigidRobot3D:
     
 
 class ConnectedRigidRobots3D:
-    def __init__(self, robot1: RigidRobot3D, robot2: RigidRobot3D):
-        self.robot1 = robot1
-        self.robot2 = robot2
+    def __init__(self, robots:list[RigidRobot3D]):
+        self.robot = robots
+
+    def add_external_force(self):
+        pass
+
+    def add_connection(self,
+        index_pairs:tuple,
+        spring_anchor_point_local_1=np.array([0.0, 0.0, 0.0]), # spring_anchor_point at the robot's local frame. Offset
+        spring_anchor_point_local_2 = np.array([0.0,0.0,0.0])
+        spring_stiffness=1,
+        torque_spring_anchor_orientation=np.diag([1.0, 1.0, 1.0]),
+        torque_spring_stiffness=0.01,
+        spring_original_length=0.04)

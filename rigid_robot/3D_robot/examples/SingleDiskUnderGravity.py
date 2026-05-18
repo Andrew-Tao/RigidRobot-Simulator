@@ -34,8 +34,8 @@ if __name__ == "__main__":
             return np.zeros(6)  # No control input
         
     simulator = Simulator3D(
-        time_step = 0.1,
-        duration = 10,
+        time_step = 0.01,
+        duration = 5,
         control_logic = control_logic,  # No control input
         stepper = 'explicit_euler',  
     )
@@ -48,6 +48,7 @@ if __name__ == "__main__":
     # Data collection (place holder for now)
     time_collection = np.array(simulator.time_collection)
     posture_collection = np.array(simulator.posture_collection)  # Shape: (num_steps, 4, 4)
+    orientation_collection = np.array(simulator.orientation_collection)
     position_over_time = posture_collection[:, :3, 3]  # Extract position (x, y, z) over time
     velocity_matrix_collection = np.array(simulator.velocity_matrix_collection)  # Shape: (num_steps, 4, 4)
     momentum_collection = np.array(simulator.momentum_collection)  # Shape: (num_steps
@@ -55,15 +56,11 @@ if __name__ == "__main__":
     position_colleiton_x = position_over_time[:, 0]
     position_colleiton_y = position_over_time[:, 1]
     position_colleiton_z = position_over_time[:, 2]
-    
-    theta_z = [0.0]
-    for i in range(len(omega_z)-1):
-        theta_z.append(theta_z[i]+ omega_z[i] * 0.01 )
-    theta_z = np.array(theta_z)
+    theta_z = orientation_collection[:,2]
     
     # Visualization
     plt.figure(figsize=(10, 6))
-    plt.plot(time_collection,omega_z, label='Z Rotation (Yaw)')
+    plt.plot(time_collection,theta_z, label='Z Rotation (Yaw)')
     plt.title('Z Rotation of the Robot Over Time')
     plt.xlabel('Time (s)')
     plt.ylabel('Z Rotation (rad)')

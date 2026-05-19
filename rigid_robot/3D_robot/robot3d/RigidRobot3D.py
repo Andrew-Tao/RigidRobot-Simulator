@@ -153,8 +153,22 @@ class ConnectedRigidRobots3D:
         total_force = np.zeros(6)
 
         for i in range(number_of_connection):
-            spring_anchor_point = self.robots[connection[i].to].posture[:3,3] if not connection[i].to_base else np.zeros(3)
-            torque_spring_anchor_orientation = self.robots[connection[i].to].orientation if not connection[i].to_base else np.zeros(3)
+            if not connection[i].to_base:
+                anchor_robot = self.robots[connection[i].to]
+                spring_anchor_point = anchor_robot.posture[:3, 3]
+                torque_spring_anchor_orientation = anchor_robot.orientation
+                # Convert anchor body velocity to world frame: v_world = R @ v_body
+                anchor_Q = anchor_robot.posture[:3, :3]
+                anchor_velocity_world = anchor_Q @ anchor_robot.velocity_matrix[:3, 3]
+                aw_x = anchor_robot.velocity_matrix[2, 1]
+                aw_y = anchor_robot.velocity_matrix[0, 2]
+                aw_z = anchor_robot.velocity_matrix[1, 0]
+                anchor_angular_velocity_world = anchor_Q @ np.array([aw_x, aw_y, aw_z])
+            else:
+                spring_anchor_point = np.zeros(3)
+                torque_spring_anchor_orientation = np.zeros(3)
+                anchor_velocity_world = np.zeros(3)
+                anchor_angular_velocity_world = np.zeros(3)
             spring_stiffness = connection[i].spring_stiffness
             torque_spring_stiffness = connection[i].torque_spring_stiffness
             spring_original_length = connection[i].spring_original_length
@@ -165,6 +179,8 @@ class ConnectedRigidRobots3D:
                 spring_stiffness= spring_stiffness,
                 torque_spring_stiffness= torque_spring_stiffness,
                 spring_original_length = spring_original_length,
+                anchor_velocity_world=anchor_velocity_world,
+                anchor_angular_velocity_world=anchor_angular_velocity_world,
             )
         total_force += self.robots[robot_index].control_input
         total_force += external_force
@@ -172,13 +188,15 @@ class ConnectedRigidRobots3D:
         return total_force
 
     def compute_single_spring_force(
-        self, 
+        self,
         robot: RigidRobot3D,
-        spring_anchor_point=np.array([0.0, 0.0, 0.0]), 
+        spring_anchor_point=np.array([0.0, 0.0, 0.0]),
         torque_spring_anchor_orientation = np.array([0.0, 0.0, 0.0]),
         spring_stiffness=1,
         torque_spring_stiffness=0.01,
-        spring_original_length=0.04
+        spring_original_length=0.04,
+        anchor_velocity_world=np.zeros(3),
+        anchor_angular_velocity_world=np.zeros(3),
         ):
 
         # TODO: Write a add_damping method
@@ -187,8 +205,8 @@ class ConnectedRigidRobots3D:
 
         position = robot.posture[:3, 3]
         orientation_Q = robot.posture[:3, :3]
-       
-        v1, v2, v3 = robot.velocity_matrix[:3, 3]   # body-frame linear velocity
+
+        v_body = robot.velocity_matrix[:3, 3]   # body-frame linear velocity = R^T * v_world
         omega_x, omega_y, omega_z   = robot.velocity_matrix[2, 1], robot.velocity_matrix[0, 2], robot.velocity_matrix[1, 0]    # angular velocity
         omega = np.array([omega_x, omega_y, omega_z])
 
@@ -200,14 +218,18 @@ class ConnectedRigidRobots3D:
             unit_anchor_vector_local = spring_anchor_point_local / spring_current_length
         else:
             unit_anchor_vector_local = np.zeros(3)
-        
+
+        # Damping uses relative velocity: v_self_world - v_anchor_world, expressed in body frame
+        relative_velocity_body = v_body - orientation_Q.T @ anchor_velocity_world
+
         linear_spring_force_local = (delta_length * unit_anchor_vector_local) * spring_stiffness
-        f_x, f_y, f_z = linear_spring_force_local -  spinrg_damping_coefficient * np.array([v1, v2, v3])
+        f_x, f_y, f_z = linear_spring_force_local - spinrg_damping_coefficient * relative_velocity_body
         theta = robot.orientation.copy() - torque_spring_anchor_orientation
-        tau_x, tau_y, tau_z = - torque_spring_stiffness * theta - torque_spring_damping_coefficient * omega
+        relative_omega = omega - orientation_Q.T @ anchor_angular_velocity_world
+        tau_x, tau_y, tau_z = - torque_spring_stiffness * theta - torque_spring_damping_coefficient * relative_omega
 
         total_force_local = np.array([f_x, f_y, f_z, tau_x, tau_y, tau_z])
-         
+
         return total_force_local
 
 

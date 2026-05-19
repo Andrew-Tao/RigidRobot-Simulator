@@ -111,6 +111,7 @@ class MutiRobotSimulator3D():
         self.duration = duration
         self.control_logic = control_logic
         self.stepper = stepper
+        self.external_force = [] # Collection of external force funciton
 
         self.time_collection = []  # To store time points
         self.posture_collection = []
@@ -118,6 +119,7 @@ class MutiRobotSimulator3D():
         self.force_collection = []
         self.momentum_collection = []
         self.orientation_collection = []
+        
     
     def attach(self,robot: ConnectedRigidRobots3D):
         self.connected_robot = robot
@@ -127,54 +129,52 @@ class MutiRobotSimulator3D():
             return False  # Simulation finished
         return True
 
+
     def multi_robots_step(self):
-        for i in range(len(self.connected_robot.robots)):
-            # Explicit Euler integration Method
+        n = len(self.connected_robot.robots)
+
+        # Gather all forces and states at time k before updating any robot
+        states_k = []
+        forces_k = []
+        for i in range(n):
             robot = self.connected_robot.robots[i]
-            robot_index = i 
+            states_k.append((robot.momentum.copy(), robot.posture.copy(), robot.velocity_matrix.copy()))
+            forces_k.append(self.connected_robot.compute_force_local_total_individual_robot(robot_index=i, external_force=np.zeros(6)))
 
-            momentum_k = robot.momentum
-            posture_k = robot.posture
-            velocity_k_matrix = robot.velocity_matrix
-            force_k = self.connected_robot.compute_force_local_total_individual_robot(robot_index= robot_index, external_force=np.zeros(6))
-
+        # Now integrate all robots using only time-k states
+        for i in range(n):
+            robot = self.connected_robot.robots[i]
+            momentum_k, posture_k, velocity_k_matrix = states_k[i]
+            force_k = forces_k[i]
 
             # -------------------Explicit Euler Integration -------------------
-            #print("stepper",self.stepper)
-
             if self.stepper == 'explicit_euler':
-                # Kinematics: T_{k+1} = T_k @ exp(ξ_k · dt)
                 posture_kp1 = posture_k @ lie3.exp(velocity_k_matrix * self.time_step)
-                # Euler-Poincaré: μ_{k+1} = μ_k + (coad(V_k) · μ_k + F_k) · dt
                 momentum_kp1 = (lie3.exp_adjoint(-velocity_k_matrix*self.time_step) @ momentum_k) + (force_k * self.time_step)
-                #print("momentum_kp1",momentum_kp1)
 
             # -------------------Symplectic Euler Integration -------------------
             if self.stepper == 'symplectic_euler':
-
                 momentum_kp1 = (lie3.exp_adjoint(-velocity_k_matrix*self.time_step) @ momentum_k) + (force_k * self.time_step)
                 velocity_kp1_matrix = lie3.hat(np.linalg.inv(robot.mass_matrix) @ momentum_kp1)
                 posture_kp1 = posture_k @ lie3.exp(velocity_kp1_matrix * self.time_step)
-                
+
             #---------------------Position Verlet Integration----------------------
             if self.stepper == 'position_verlet':
-            
                 posture_k_phalf = posture_k @ lie3.exp(velocity_k_matrix * (self.time_step / 2))
                 robot.posture = posture_k_phalf
                 force_k_phalf = robot.compute_force_local_total_individual_robot(robot.control_input)
                 momentum_kp1 = (lie3.exp_adjoint(-velocity_k_matrix*self.time_step) @ momentum_k) + (force_k_phalf * self.time_step)
                 posture_kp1 = posture_k_phalf @ lie3.exp(velocity_k_matrix * (self.time_step / 2))
 
-                    # Recover velocity matrix: ξ_{k+1} = M⁻¹ · μ_{k+1}
-            
             xi_kp1 = np.linalg.solve(robot.mass_matrix, momentum_kp1)
 
             robot.posture = posture_kp1
             robot.momentum = momentum_kp1
             robot.velocity_matrix = lie3.hat(xi_kp1)
-            velocity_temp = np.array([robot.velocity_matrix[2, 1], robot.velocity_matrix[0, 2], robot.velocity_matrix[1, 0]]) # Angular Velocity
+            velocity_temp = np.array([robot.velocity_matrix[2, 1], robot.velocity_matrix[0, 2], robot.velocity_matrix[1, 0]])
             delta_orientation = velocity_temp * self.time_step
             robot.orientation = robot.orientation + delta_orientation
+
         self.time_collection.append(len(self.time_collection) * self.time_step)
 
     def multi_robot_record(self):

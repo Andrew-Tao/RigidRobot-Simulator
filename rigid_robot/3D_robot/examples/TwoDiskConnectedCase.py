@@ -61,30 +61,34 @@ if __name__ == "__main__":
     )
     # Add connection map for the robot
     slender_robot.add_connection((0,1), to_base= True,)
-    slender_robot.add_connection((0,1), to_base =False)
+    slender_robot.add_connection((0,1), to_base= False,)
+  
+    #print(slender_robot.connection_map)
 
     simulator_slender = MutiRobotSimulator3D(
         time_step = 0.01,
-        duration = 10,
+        duration = 20,
         stepper= 'explicit_euler',
         control_logic = None,
     )
 
     simulator_slender.attach(slender_robot)
+    simulator_slender.connected_robot.robots[1].control_input = np.array([0.0,0.0,-0.01,0.0,0.0,0.0])
 
     while simulator_slender.run():
+        
         simulator_slender.multi_robots_step()
         simulator_slender.multi_robot_record()
     
     
 
     # Data collection (place holder for now)
-    print(len(simulator_slender.time_collection))
+    #print(len(simulator_slender.time_collection))
     time_collection = np.array(simulator_slender.time_collection)
     
     posture_collection = np.array(simulator_slender.posture_collection)
 
-    print(posture_collection.shape)
+    #print(posture_collection.shape)
     
     
     
@@ -98,9 +102,12 @@ if __name__ == "__main__":
     position_colleiton_x_2 = position_robot_2[:, 0]
     position_colleiton_y_2 = position_robot_2[:, 1]
     position_colleiton_z_2 = position_robot_2[:, 2]
+
+    
     
     plt.plot(time_collection,position_colleiton_z_1,label = "robot_1")
     plt.plot(time_collection,position_colleiton_z_2,label = "robot_2")
+    
 
     plt.xlabel("x")
     plt.ylabel("y")

@@ -20,7 +20,7 @@ forces and torsional spring moments.
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from robot3d.RigidRobot3D import RigidRobot3D, ConnectedRigidRobots3D
-from robot3d.Simulator3D import Simulator3D
+from robot3d.Simulator3D import Simulator3D, MutiRobotSimulator3D
 import numpy as np
 from robot3d.methods3D import SE3LieAlgebra
 import matplotlib.pyplot as plt
@@ -55,9 +55,25 @@ if __name__ == "__main__":
         track_width_between_wheels = 0.15,# This is useless 
     )
     robot_collection = [robot_disk_1,robot_disk_2]
-    #TODO: Start from here
-    connection_map = None
+
     slender_robot = ConnectedRigidRobots3D(
-        robots= robot_collection,
-        connection_map = None
+        robots= robot_collection
     )
+    # Add connection map for the robot
+    slender_robot.add_connection((0,1), to_base= True,)
+    slender_robot.add_connection((0,1), to_base =False)
+
+    simulator_slender = MutiRobotSimulator3D(
+        time_step = 0.01,
+        duration = 10,
+        stepper= 'explicit_euler',
+        control_logic = None,
+    )
+
+    simulator_slender.attach(slender_robot)
+
+    while simulator_slender.run():
+        simulator_slender.multi_robots_step()
+        simulator_slender.multi_robot_record()
+
+

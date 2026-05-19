@@ -2,6 +2,7 @@ import numpy as np
 from .methods3D import SE3LieAlgebra
 import matplotlib.pyplot as plt
 from scipy.spatial.transform import Rotation as R
+from .RigidRobot3D import ConnectedRigidRobots3D
 
 lie3 = SE3LieAlgebra()
 
@@ -93,3 +94,86 @@ def control_logic(time):
     input_force_left = 1.0
     input_force_right = 1.0
     return np.array([input_force_left, input_force_right])
+
+
+class MutiRobotSimulator3D():
+    def __init__(
+        self,
+        time_step: float, 
+        duration: float, 
+        stepper,
+        control_logic = None, 
+
+        ):
+    
+        self.connected_robot = None
+        self.time_step = time_step
+        self.duration = duration
+        self.control_logic = control_logic
+        self.stepper = stepper
+        self.time_collection = []  # To store time points
+    
+    def attach(self,robot: ConnectedRigidRobots3D):
+        self.connected_robot = robot
+    
+    def run(self):
+        if len(self.time_collection) * self.time_step >= self.duration:
+            return False  # Simulation finished
+        return True
+
+    def multi_robots_step(self):
+        for i in range(len(self.connected_robot.robots)):
+            # Explicit Euler integration Method
+            robot = self.connected_robot.robots[i]
+            robot_index = i 
+
+            momentum_k = robot.momentum
+            posture_k = robot.posture
+            velocity_k_matrix = robot.velocity_matrix
+            force_k = self.connected_robot.compute_force_local_total_individual_robot(robot_index= robot_index, external_force=np.zeros(6))
+
+
+            # -------------------Explicit Euler Integration -------------------
+            print("stepper",self.stepper)
+
+            if self.stepper == 'explicit_euler':
+                # Kinematics: T_{k+1} = T_k @ exp(ξ_k · dt)
+                posture_kp1 = posture_k @ lie3.exp(velocity_k_matrix * self.time_step)
+                # Euler-Poincaré: μ_{k+1} = μ_k + (coad(V_k) · μ_k + F_k) · dt
+                momentum_kp1 = (lie3.exp_adjoint(-velocity_k_matrix*self.time_step) @ momentum_k) + (force_k * self.time_step)
+                print("momentum_kp1",momentum_kp1)
+
+            # -------------------Symplectic Euler Integration -------------------
+            if self.stepper == 'symplectic_euler':
+
+                momentum_kp1 = (lie3.exp_adjoint(-velocity_k_matrix*self.time_step) @ momentum_k) + (force_k * self.time_step)
+                velocity_kp1_matrix = lie3.hat(np.linalg.inv(robot.mass_matrix) @ momentum_kp1)
+                posture_kp1 = posture_k @ lie3.exp(velocity_kp1_matrix * self.time_step)
+                
+            #---------------------Position Verlet Integration----------------------
+            if self.stepper == 'position_verlet':
+            
+                posture_k_phalf = posture_k @ lie3.exp(velocity_k_matrix * (self.time_step / 2))
+                robot.posture = posture_k_phalf
+                force_k_phalf = robot.compute_force_local_total_individual_robot(robot.control_input)
+                momentum_kp1 = (lie3.exp_adjoint(-velocity_k_matrix*self.time_step) @ momentum_k) + (force_k_phalf * self.time_step)
+                posture_kp1 = posture_k_phalf @ lie3.exp(velocity_k_matrix * (self.time_step / 2))
+
+                    # Recover velocity matrix: ξ_{k+1} = M⁻¹ · μ_{k+1}
+            
+            xi_kp1 = np.linalg.solve(robot.mass_matrix, momentum_kp1)
+
+            robot.posture = posture_kp1
+            robot.momentum = momentum_kp1
+            robot.velocity_matrix = lie3.hat(xi_kp1)
+            velocity_temp = np.array([robot.velocity_matrix[2, 1], robot.velocity_matrix[0, 2], robot.velocity_matrix[1, 0]]) # Angular Velocity
+            delta_orientation = velocity_temp * self.time_step
+            robot.orientation = robot.orientation + delta_orientation
+            self.time_collection.append(len(self.time_collection) * self.time_step)
+    def multi_robot_record(self):
+        pass
+        
+
+
+
+

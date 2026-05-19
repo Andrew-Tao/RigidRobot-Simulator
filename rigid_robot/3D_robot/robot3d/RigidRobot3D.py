@@ -42,7 +42,7 @@ class RigidRobot3D:
         self.momentum = self.mass_matrix @ lie3.vee(self.velocity_matrix)  # 3-vector μ = M·ξ
         self.environment_resitriction = None
         self.force = None  # Generalized force in R^3 vector form [f_x, f_y, tau]
-        self.control_input = np.zeros(2)  # Control input (force_l, force_r)
+        self.control_input = np.zeros(6)  # Control input (force_l, force_r)
         self.friction_coefficient = 0.6  # Simple friction model
 
     def compute_posture(self, position, orientation):

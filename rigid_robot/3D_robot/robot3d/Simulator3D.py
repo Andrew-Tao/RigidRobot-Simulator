@@ -121,6 +121,7 @@ class MutiRobotSimulator3D():
         self.orientation_collection = []
 
         self.external_force_list = [] # Collection of External Forces
+        self.current_time = 0.0
         
     
     def attach(self,robot: ConnectedRigidRobots3D):
@@ -136,6 +137,7 @@ class MutiRobotSimulator3D():
 
 
     def multi_robots_step(self):
+        self.current_time = len(self.time_collection) * self.time_step
         n = len(self.connected_robot.robots)
 
         # Gather all forces and states at time k before updating any robot
@@ -150,7 +152,7 @@ class MutiRobotSimulator3D():
         # Add External Forces, adding to forces_k
         external_force_k = np.zeros((n, 6))  # Bug 9 fixed: np.zeros needs a tuple shape
         for force_type in self.external_force_list:  # Bug 10 fixed: iterate over the correct list
-            external_force_k += force_type.compute_force_collection(self.connected_robot)  # Bug 11 fixed: pass slender_robot argument
+            external_force_k += force_type.compute_force_collection(self.connected_robot, self.current_time)  # Bug 11 fixed: pass slender_robot argument
         for i in range(n):
             forces_k[i] += external_force_k[i]  # Bug 10 fixed: index into computed array, not the list
 
@@ -188,7 +190,7 @@ class MutiRobotSimulator3D():
             delta_orientation = velocity_temp * self.time_step
             robot.orientation = robot.orientation + delta_orientation
 
-        self.time_collection.append(len(self.time_collection) * self.time_step)
+        self.time_collection.append(self.current_time)
 
     def multi_robot_record(self):
 

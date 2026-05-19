@@ -33,7 +33,7 @@ if __name__ == "__main__":
 
     robot_disk_1 = RigidRobot3D(
         position = np.array([0.0, 0.0, -0.04]),
-        orientation = np.array([0.0, 0.0, 1.0]),
+        orientation = np.array([0.0, 0.0, 0.0]),
         mass = 0.0855,
         inertia = np.array([2.37e-5, 2.37e-5, 3.84e-5]), # Ixx = Iyy = (1/12) * m *( 3r^2 + h^2), Izz = (1/2) * m * r^2
         linear_velocity = np.zeros(3),
@@ -45,7 +45,7 @@ if __name__ == "__main__":
 
     robot_disk_2 = RigidRobot3D(
         position = np.array([0.0, 0.0, -0.08]),
-        orientation = np.array([0.0, 0.0, 1.0]),
+        orientation = np.array([0.0, 0.0, 0.0]),
         mass = 0.0855,
         inertia = np.array([2.37e-5, 2.37e-5, 3.84e-5]), # Ixx = Iyy = (1/12) * m *( 3r^2 + h^2), Izz = (1/2) * m * r^2
         linear_velocity = np.zeros(3),
@@ -67,15 +67,17 @@ if __name__ == "__main__":
 
     simulator_slender = MutiRobotSimulator3D(
         time_step = 0.01,
-        duration = 20,
+        duration = 40,
         stepper= 'explicit_euler',
         control_logic = None,
     )
 
     simulator_slender.attach(slender_robot)
-    simulator_slender.connected_robot.robots[1].control_input = np.array([0.0,0.0,0.0,0.0,0.0,0.001])
+    simulator_slender.connected_robot.robots[1].control_input = np.array([1.0,0.0,0.0,0.0,0.0,0.0])
 
     while simulator_slender.run():
+        if simulator_slender.current_time >= 4.0:
+            simulator_slender.connected_robot.robots[1].control_input = np.zeros(6)
         
         simulator_slender.multi_robots_step()
         simulator_slender.multi_robot_record()
@@ -105,26 +107,47 @@ if __name__ == "__main__":
     position_robot_1 = posture_collection[:,0, :3, 3]  # Extract position (x, y, z) over time
     position_robot_2 = posture_collection[:,1, :3, 3]
     
-    position_colleiton_x_1 = position_robot_1[:, 0]
-    position_colleiton_y_1 = position_robot_1[:, 1]
-    position_colleiton_z_1 = position_robot_1[:, 2]
+    position_x_1 = position_robot_1[:, 0]
+    position_z_1 = position_robot_1[:, 2]
+    position_x_2 = position_robot_2[:, 0]
+    position_z_2 = position_robot_2[:, 2]
 
-    position_colleiton_x_2 = position_robot_2[:, 0]
-    position_colleiton_y_2 = position_robot_2[:, 1]
-    position_colleiton_z_2 = position_robot_2[:, 2]
+    fig, axes = plt.subplots(2, 2, figsize=(12, 8))
+    fig.suptitle("Two-Disk Robot Simulation")
 
-    
-    
-    plt.plot(time_collection,theta_z_1,label = "robot_1")
-    plt.plot(time_collection,theta_z_2,label = "robot_2")
-    
+    axes[0, 0].plot(time_collection, position_x_1, label="disk 1")
+    axes[0, 0].plot(time_collection, position_x_2, label="disk 2")
+    axes[0, 0].set_xlabel("Time (s)")
+    axes[0, 0].set_ylabel("Position X (m)")
+    axes[0, 0].set_title("Position X")
+    axes[0, 0].legend()
+    axes[0, 0].grid(True)
 
-    plt.xlabel("x")
-    plt.ylabel("y")
-    plt.title("Two Curves on One Plot")
-    plt.legend()
-    plt.grid(True)
+    axes[0, 1].plot(time_collection, position_z_1, label="disk 1")
+    axes[0, 1].plot(time_collection, position_z_2, label="disk 2")
+    axes[0, 1].set_xlabel("Time (s)")
+    axes[0, 1].set_ylabel("Position Z (m)")
+    axes[0, 1].set_title("Position Z")
+    axes[0, 1].legend()
+    axes[0, 1].grid(True)
 
+    axes[1, 0].plot(time_collection, theta_x_1, label="disk 1")
+    axes[1, 0].plot(time_collection, theta_x_2, label="disk 2")
+    axes[1, 0].set_xlabel("Time (s)")
+    axes[1, 0].set_ylabel("Theta X (rad)")
+    axes[1, 0].set_title("Orientation Theta X")
+    axes[1, 0].legend()
+    axes[1, 0].grid(True)
+
+    axes[1, 1].plot(time_collection, theta_z_1, label="disk 1")
+    axes[1, 1].plot(time_collection, theta_z_2, label="disk 2")
+    axes[1, 1].set_xlabel("Time (s)")
+    axes[1, 1].set_ylabel("Theta Z (rad)")
+    axes[1, 1].set_title("Orientation Theta Z")
+    axes[1, 1].legend()
+    axes[1, 1].grid(True)
+
+    plt.tight_layout()
     plt.show()
 
 

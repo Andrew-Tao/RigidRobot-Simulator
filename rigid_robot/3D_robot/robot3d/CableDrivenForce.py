@@ -1,11 +1,11 @@
 import numpy as np
 
 class CableDrivenForce:
-    def __init__(self, control_input: np.ndarray, hole_offset: np.ndarray):
+    def __init__(self, control_input: callable, hole_offset: np.ndarray):
         self.control_input = control_input # control_input = [force_1, force_2, force_3] forces from each cable
         self.hole_offset = hole_offset # (3,3) [[x_hole_1,y_hole_2,0],...] The position of the hole described in the x-y plan
 
-    def compute_force_collection(self, slender_robot):
+    def compute_force_collection(self, slender_robot, time):
 
         n = len(slender_robot.robots)
         force_collection = np.zeros((n, 6))  # Bug 1 fixed: np.zeros needs a tuple shape
@@ -40,8 +40,8 @@ class CableDrivenForce:
                 else:
                     unit_anchor_vector_local_after = np.zeros(3)
 
-                linear_force_before = self.control_input[cable_index] * unit_anchor_vector_local_before
-                linear_force_after  = self.control_input[cable_index] * unit_anchor_vector_local_after
+                linear_force_before = self.control_input(time)[cable_index] * unit_anchor_vector_local_before
+                linear_force_after  = self.control_input(time)[cable_index] * unit_anchor_vector_local_after
                 linear_total_on_single_robot = linear_force_before + linear_force_after
 
                 # --------------------- Compute Torque in Local Frame ----------------------

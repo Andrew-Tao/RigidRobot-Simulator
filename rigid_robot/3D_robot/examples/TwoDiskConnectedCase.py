@@ -73,7 +73,7 @@ if __name__ == "__main__":
     )
 
     simulator_slender.attach(slender_robot)
-    simulator_slender.connected_robot.robots[1].control_input = np.array([0.0,0.0,-0.01,0.0,0.0,0.0])
+    simulator_slender.connected_robot.robots[1].control_input = np.array([0.0,0.0,0.0,0.0,0.0,0.001])
 
     while simulator_slender.run():
         
@@ -87,10 +87,20 @@ if __name__ == "__main__":
     time_collection = np.array(simulator_slender.time_collection)
     
     posture_collection = np.array(simulator_slender.posture_collection)
+    orientation_collection = np.array(simulator_slender.orientation_collection)
+
+    #print("orientation",orientation_collection.shape)
+
+    theta_x_1 = orientation_collection[:,0,0]
+    theta_y_1 = orientation_collection[:,0,1]
+    theta_z_1 = orientation_collection[:,0,2]
+
+    theta_x_2 = orientation_collection[:,1,0]
+    theta_y_2 = orientation_collection[:,1,1]
+    theta_z_2 = orientation_collection[:,1,2]
+
 
     #print(posture_collection.shape)
-    
-    
     
     position_robot_1 = posture_collection[:,0, :3, 3]  # Extract position (x, y, z) over time
     position_robot_2 = posture_collection[:,1, :3, 3]
@@ -105,8 +115,8 @@ if __name__ == "__main__":
 
     
     
-    plt.plot(time_collection,position_colleiton_z_1,label = "robot_1")
-    plt.plot(time_collection,position_colleiton_z_2,label = "robot_2")
+    plt.plot(time_collection,theta_z_1,label = "robot_1")
+    plt.plot(time_collection,theta_z_2,label = "robot_2")
     
 
     plt.xlabel("x")

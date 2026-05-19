@@ -119,6 +119,8 @@ class MutiRobotSimulator3D():
         self.force_collection = []
         self.momentum_collection = []
         self.orientation_collection = []
+
+        self.external_force_list = [] # Collection of External Forces
         
     
     def attach(self,robot: ConnectedRigidRobots3D):
@@ -128,6 +130,9 @@ class MutiRobotSimulator3D():
         if len(self.time_collection) * self.time_step >= self.duration:
             return False  # Simulation finished
         return True
+    
+    def add_external_force(self,force_type):
+        self.external_force_list.append(force_type)
 
 
     def multi_robots_step(self):
@@ -136,10 +141,18 @@ class MutiRobotSimulator3D():
         # Gather all forces and states at time k before updating any robot
         states_k = []
         forces_k = []
+
         for i in range(n):
             robot = self.connected_robot.robots[i]
             states_k.append((robot.momentum.copy(), robot.posture.copy(), robot.velocity_matrix.copy()))
             forces_k.append(self.connected_robot.compute_force_local_total_individual_robot(robot_index=i, external_force=np.zeros(6)))
+
+        # Add External Forces, adding to forces_k
+        external_force_k = np.zeros((n, 6))  # Bug 9 fixed: np.zeros needs a tuple shape
+        for force_type in self.external_force_list:  # Bug 10 fixed: iterate over the correct list
+            external_force_k += force_type.compute_force_collection(self.connected_robot)  # Bug 11 fixed: pass slender_robot argument
+        for i in range(n):
+            forces_k[i] += external_force_k[i]  # Bug 10 fixed: index into computed array, not the list
 
         # Now integrate all robots using only time-k states
         for i in range(n):

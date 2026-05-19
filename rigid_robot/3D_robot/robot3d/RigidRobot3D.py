@@ -144,10 +144,12 @@ class ConnectedRigidRobots3D:
         #TODO: this is now just a place holder for empty external force
         self.external_force = np.zeros(6)
 
-    def add_external_force(self):
+        self.force = np.zeros((len(robots), 6)) # Collection of the force for each individual robot #TODO: Use this
+
+    def compute_external_force(self):
         pass
 
-    def compute_force_local_total_individual_robot(self,robot_index:int, external_force):
+    def compute_force_local_total_individual_robot(self,robot_index:int, external_force = np.zeros(6)):
         connection = self.connection_map[robot_index]
         number_of_connection = len(connection)
         total_force = np.zeros(6)

@@ -111,7 +111,13 @@ class MutiRobotSimulator3D():
         self.duration = duration
         self.control_logic = control_logic
         self.stepper = stepper
+
         self.time_collection = []  # To store time points
+        self.posture_collection = []
+        self.velocity_matrix_collection = []
+        self.force_collection = []
+        self.momentum_collection = []
+        self.orientation_collection = []
     
     def attach(self,robot: ConnectedRigidRobots3D):
         self.connected_robot = robot
@@ -134,14 +140,14 @@ class MutiRobotSimulator3D():
 
 
             # -------------------Explicit Euler Integration -------------------
-            print("stepper",self.stepper)
+            #print("stepper",self.stepper)
 
             if self.stepper == 'explicit_euler':
                 # Kinematics: T_{k+1} = T_k @ exp(ξ_k · dt)
                 posture_kp1 = posture_k @ lie3.exp(velocity_k_matrix * self.time_step)
                 # Euler-Poincaré: μ_{k+1} = μ_k + (coad(V_k) · μ_k + F_k) · dt
                 momentum_kp1 = (lie3.exp_adjoint(-velocity_k_matrix*self.time_step) @ momentum_k) + (force_k * self.time_step)
-                print("momentum_kp1",momentum_kp1)
+                #print("momentum_kp1",momentum_kp1)
 
             # -------------------Symplectic Euler Integration -------------------
             if self.stepper == 'symplectic_euler':
@@ -169,9 +175,38 @@ class MutiRobotSimulator3D():
             velocity_temp = np.array([robot.velocity_matrix[2, 1], robot.velocity_matrix[0, 2], robot.velocity_matrix[1, 0]]) # Angular Velocity
             delta_orientation = velocity_temp * self.time_step
             robot.orientation = robot.orientation + delta_orientation
-            self.time_collection.append(len(self.time_collection) * self.time_step)
+        self.time_collection.append(len(self.time_collection) * self.time_step)
+
     def multi_robot_record(self):
-        pass
+
+        posture_frame = []
+        velocity_matrix_frame = []
+        force_frame = []
+        momentum_frame = []
+        orientation_frame = []
+
+        for i in range(len(self.connected_robot.robots)):
+           
+            posture_frame.append(self.connected_robot.robots[i].posture.copy())
+            velocity_matrix_frame.append(self.connected_robot.robots[i].velocity_matrix.copy())
+            force_frame.append(self.connected_robot.robots[i].compute_force_local(self.connected_robot.robots[i].control_input).copy())
+            momentum_frame.append(self.connected_robot.robots[i].momentum.copy())
+            orientation_frame.append(self.connected_robot.robots[i].orientation.copy())
+
+
+        posture_frame = np.array(posture_frame)
+        velocity_matrix_frame = np.array(velocity_matrix_frame)
+        force_frame = np.array(force_frame)
+        momentum_frame = np.array(momentum_frame)
+        orientation_frame = np.array(orientation_frame)
+
+
+        self.posture_collection.append(posture_frame)
+        self.velocity_matrix_collection.append(velocity_matrix_frame)
+        self.force_collection.append(force_frame)
+        self.momentum_collection.append(momentum_frame)
+        self.orientation_collection.append(orientation_frame)
+        
         
 
 

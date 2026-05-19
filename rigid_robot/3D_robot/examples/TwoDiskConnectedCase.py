@@ -44,7 +44,7 @@ if __name__ == "__main__":
     )
 
     robot_disk_2 = RigidRobot3D(
-        position = np.array([0.0, 0.0, -0.04]),
+        position = np.array([0.0, 0.0, -0.08]),
         orientation = np.array([0.0, 0.0, 1.0]),
         mass = 0.0855,
         inertia = np.array([2.37e-5, 2.37e-5, 3.84e-5]), # Ixx = Iyy = (1/12) * m *( 3r^2 + h^2), Izz = (1/2) * m * r^2
@@ -75,5 +75,39 @@ if __name__ == "__main__":
     while simulator_slender.run():
         simulator_slender.multi_robots_step()
         simulator_slender.multi_robot_record()
+    
+    
+
+    # Data collection (place holder for now)
+    print(len(simulator_slender.time_collection))
+    time_collection = np.array(simulator_slender.time_collection)
+    
+    posture_collection = np.array(simulator_slender.posture_collection)
+
+    print(posture_collection.shape)
+    
+    
+    
+    position_robot_1 = posture_collection[:,0, :3, 3]  # Extract position (x, y, z) over time
+    position_robot_2 = posture_collection[:,1, :3, 3]
+    
+    position_colleiton_x_1 = position_robot_1[:, 0]
+    position_colleiton_y_1 = position_robot_1[:, 1]
+    position_colleiton_z_1 = position_robot_1[:, 2]
+
+    position_colleiton_x_2 = position_robot_2[:, 0]
+    position_colleiton_y_2 = position_robot_2[:, 1]
+    position_colleiton_z_2 = position_robot_2[:, 2]
+    
+    plt.plot(time_collection,position_colleiton_z_1,label = "robot_1")
+    plt.plot(time_collection,position_colleiton_z_2,label = "robot_2")
+
+    plt.xlabel("x")
+    plt.ylabel("y")
+    plt.title("Two Curves on One Plot")
+    plt.legend()
+    plt.grid(True)
+
+    plt.show()
 
 

@@ -179,8 +179,8 @@ class ConnectedRigidRobots3D:
             if robot_index == 1:
                 #print("Connection",number_of_connection)
                 pass
-                print("spring_anchor_point",spring_anchor_point)
-                print("anchor_velocity_world",anchor_velocity_world)
+                #print("spring_anchor_point",spring_anchor_point)
+                #print("anchor_velocity_world",anchor_velocity_world)
                 test_flag = True
             else:
                 test_flag = False
@@ -211,11 +211,12 @@ class ConnectedRigidRobots3D:
         anchor_velocity_world=np.zeros(3),
         anchor_angular_velocity_world=np.zeros(3),
         test_flag = False,
+        shear_stiffness = 5.0,
         ):
 
         # TODO: Write a add_damping method
-        spinrg_damping_coefficient = 0.1
-        torque_spring_damping_coefficient = 0.0001
+        spinrg_damping_coefficient = 1.0
+        torque_spring_damping_coefficient = 0.001
 
         position = robot.posture[:3, 3]
         orientation_Q = robot.posture[:3, :3]
@@ -236,16 +237,29 @@ class ConnectedRigidRobots3D:
         # Damping uses relative velocity: v_self_world - v_anchor_world, expressed in body frame
         relative_velocity_body = v_body - orientation_Q.T @ anchor_velocity_world
 
+        #---------------------------------Elongation------------------------------------
         linear_spring_force_local = (delta_length * unit_anchor_vector_local) * spring_stiffness
         f_x, f_y, f_z = linear_spring_force_local - spinrg_damping_coefficient * relative_velocity_body
+
+        #---------------------------------Bending & Twisting ------------------------------
         theta = robot.orientation.copy() - torque_spring_anchor_orientation
         relative_omega = omega - orientation_Q.T @ anchor_angular_velocity_world
         tau_x, tau_y, tau_z = - torque_spring_stiffness * theta - torque_spring_damping_coefficient * relative_omega
 
+        # ------------------------------- Shearing Force --------------------------------
+        lateral_displacement = spring_anchor_point_local.copy()
+        lateral_displacement[2] = 0.0
+        shear_force = shear_stiffness * lateral_displacement 
+        f_x, f_y, f_z = np.array([f_x, f_y, f_z]) + shear_force
+
         total_force_local = np.array([f_x, f_y, f_z, tau_x, tau_y, tau_z])
         if test_flag == True: 
-            print("spring_current_lenght",spring_current_length)
-            print(total_force_local)
+            pass 
+
+            #print("spring_current_lenght",spring_current_length)
+            #print("position",position)
+            #print("anchor_point_local",spring_anchor_point_local)
+            #print(total_force_local)
         print("\n")
 
         return total_force_local

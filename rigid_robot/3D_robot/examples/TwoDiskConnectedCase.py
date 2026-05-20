@@ -62,16 +62,16 @@ if __name__ == "__main__":
 
     simulator_slender = MutiRobotSimulator3D(
         time_step=0.01,
-        duration=80,
+        duration=30,
         stepper='explicit_euler',
         control_logic=None,
     )
 
     simulator_slender.attach(slender_robot)
-    simulator_slender.connected_robot.robots[1].control_input = np.array([1.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+    simulator_slender.connected_robot.robots[1].control_input = np.array([0.1, 0.0, 0.0, 0.0, 0.0, 0.0])
 
     while simulator_slender.run():
-        if simulator_slender.current_time >= 3.0:
+        if simulator_slender.current_time >= 0.5:
             simulator_slender.connected_robot.robots[1].control_input = np.zeros(6)
         simulator_slender.multi_robots_step()
         simulator_slender.multi_robot_record()

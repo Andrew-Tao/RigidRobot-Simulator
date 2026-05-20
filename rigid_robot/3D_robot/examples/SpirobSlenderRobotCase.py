@@ -26,6 +26,7 @@ import numpy as np
 from robot3d.methods3D import SE3LieAlgebra
 import matplotlib.pyplot as plt
 from scipy.spatial.transform import Rotation as R
+from SlenderRobotVisualization import animate_slender_robot
 
 
 def rotate_xy(v, degree):
@@ -56,7 +57,6 @@ if __name__ == "__main__":
         thickness = 0.025,
         track_width_between_wheels = 0.15,# This is useless 
     )
-
     robot_disk_2 = RigidRobot3D(
         position = np.array([0.0, 0.0, -0.08]),
         orientation = np.array([0.0, 0.0, 0.0]),
@@ -68,7 +68,6 @@ if __name__ == "__main__":
         thickness = 0.025,
         track_width_between_wheels = 0.15,# This is useless 
     )
-
     robot_disk_3 = RigidRobot3D(
         position = np.array([0.0, 0.0, -0.12]),
         orientation = np.array([0.0, 0.0, 0.0]),
@@ -80,27 +79,76 @@ if __name__ == "__main__":
         thickness = 0.025,
         track_width_between_wheels = 0.15,# This is useless 
     )
+    robot_disk_4 = RigidRobot3D(
+        position = np.array([0.0, 0.0, -0.04 * 4]),
+        orientation = np.array([0.0, 0.0, 0.0]),
+        mass = 0.0855,
+        inertia = np.array([2.37e-5, 2.37e-5, 3.84e-5]), # Ixx = Iyy = (1/12) * m *( 3r^2 + h^2), Izz = (1/2) * m * r^2
+        linear_velocity = np.zeros(3),
+        angular_velocity = np.zeros(3),
+        radius = 0.03,
+        thickness = 0.025,
+        track_width_between_wheels = 0.15,# This is useless 
+    )
+    robot_disk_5 = RigidRobot3D(
+        position = np.array([0.0, 0.0, -0.04 * 5]),
+        orientation = np.array([0.0, 0.0, 0.0]),
+        mass = 0.0855,
+        inertia = np.array([2.37e-5, 2.37e-5, 3.84e-5]), # Ixx = Iyy = (1/12) * m *( 3r^2 + h^2), Izz = (1/2) * m * r^2
+        linear_velocity = np.zeros(3),
+        angular_velocity = np.zeros(3),
+        radius = 0.03,
+        thickness = 0.025,
+        track_width_between_wheels = 0.15,# This is useless 
+    )
+    robot_disk_6 = RigidRobot3D(
+        position = np.array([0.0, 0.0, -0.04 * 6]),
+        orientation = np.array([0.0, 0.0, 0.0]),
+        mass = 0.0855,
+        inertia = np.array([2.37e-5, 2.37e-5, 3.84e-5]), # Ixx = Iyy = (1/12) * m *( 3r^2 + h^2), Izz = (1/2) * m * r^2
+        linear_velocity = np.zeros(3),
+        angular_velocity = np.zeros(3),
+        radius = 0.03,
+        thickness = 0.025,
+        track_width_between_wheels = 0.15,# This is useless 
+    )
+    robot_disk_7 = RigidRobot3D(
+        position = np.array([0.0, 0.0, -0.04 * 7]),
+        orientation = np.array([0.0, 0.0, 0.0]),
+        mass = 0.0855,
+        inertia = np.array([2.37e-5, 2.37e-5, 3.84e-5]), # Ixx = Iyy = (1/12) * m *( 3r^2 + h^2), Izz = (1/2) * m * r^2
+        linear_velocity = np.zeros(3),
+        angular_velocity = np.zeros(3),
+        radius = 0.03,
+        thickness = 0.025,
+        track_width_between_wheels = 0.15,# This is useless 
+    )
 
-    robot_collection = [robot_disk_1,robot_disk_2,robot_disk_3]
+    robot_collection = [robot_disk_1,robot_disk_2,robot_disk_3,robot_disk_4,robot_disk_5,robot_disk_6,robot_disk_7]
 
     slender_robot = ConnectedRigidRobots3D(
         robots= robot_collection
     )
 
     # Add connection map for the robot
-    k_s = 1.0
+    k_s = 10.0
     k_t = 0.04
 
     slender_robot.add_connection((0,1), to_base= True, spring_stiffness= k_s, torque_spring_stiffness= k_t)
     slender_robot.add_connection((0,1), to_base= False, spring_stiffness= k_s, torque_spring_stiffness= k_t)
     slender_robot.add_connection((1,2), to_base= False,spring_stiffness= k_s, torque_spring_stiffness= k_t)
+    slender_robot.add_connection((2,3), to_base= False,spring_stiffness= k_s, torque_spring_stiffness= k_t)
+    slender_robot.add_connection((3,4), to_base= False,spring_stiffness= k_s, torque_spring_stiffness= k_t)
+    slender_robot.add_connection((4,5), to_base= False,spring_stiffness= k_s, torque_spring_stiffness= k_t)
+    slender_robot.add_connection((5,6), to_base= False,spring_stiffness= k_s, torque_spring_stiffness= k_t)
+
 
     # Add external force - CableDrivenForce
 
     
 
     def control_logic(time: float):
-        cable_driven_force = np.array([0.0, 0.0, 0.01]) if time < 0.0 else np.zeros(3)
+        cable_driven_force = np.array([0.0, 0.0, 0.09]) if time < 20.0 else np.zeros(3)
         return cable_driven_force
     
     base_hole_offset = np.array([0.8 * robot_radius, 0.0, 0.0])
@@ -121,10 +169,10 @@ if __name__ == "__main__":
     simulator_slender.attach(slender_robot)
     simulator_slender.add_external_force(cable_driven_force)
 
-    simulator_slender.connected_robot.robots[1].control_input = np.array([0.0,0.0,1.0,0.0,0.0,0.0])
+    #simulator_slender.connected_robot.robots[1].control_input = np.array([0.1,0.0,0.0,0.0,0.0,0.0])
 
     while simulator_slender.run():
-        if simulator_slender.current_time >= 4.0:
+        if simulator_slender.current_time >= 0.5:
             simulator_slender.connected_robot.robots[1].control_input = np.zeros(6)
         simulator_slender.multi_robots_step()
         simulator_slender.multi_robot_record()
@@ -138,66 +186,53 @@ if __name__ == "__main__":
     force_collection = np.array(simulator_slender.force_collection)
     #print("force_colleciton", force_collection)
 
-    #print("orientation",orientation_collection.shape)
+    N_disks = posture_collection.shape[1]
 
-    theta_x_1 = orientation_collection[:, 0, 0]
-    theta_z_1 = orientation_collection[:, 0, 2]
-    theta_x_2 = orientation_collection[:, 1, 0]
-    theta_z_2 = orientation_collection[:, 1, 2]
-    theta_x_3 = orientation_collection[:, 2, 0]
-    theta_z_3 = orientation_collection[:, 2, 2]
-
-    position_robot_1 = posture_collection[:, 0, :3, 3]
-    position_robot_2 = posture_collection[:, 1, :3, 3]
-    position_robot_3 = posture_collection[:, 2, :3, 3]
-
-    position_x_1 = position_robot_1[:, 0]
-    position_z_1 = position_robot_1[:, 2]
-    position_x_2 = position_robot_2[:, 0]
-    position_z_2 = position_robot_2[:, 2]
-    position_x_3 = position_robot_3[:, 0]
-    position_z_3 = position_robot_3[:, 2]
+    # Use a colourmap so the plots work for any number of disks.
+    # Show a full legend when N is small; only show first/middle/last when large.
+    cmap = plt.cm.get_cmap('viridis', N_disks)
+    show_all_labels = N_disks <= 10
+    label_set = {0, N_disks // 2, N_disks - 1}
 
     fig, axes = plt.subplots(2, 2, figsize=(12, 8))
     fig.suptitle("Spirob Slender Robot Simulation")
 
-    axes[0, 0].plot(time_collection, position_x_1, label="disk 1")
-    axes[0, 0].plot(time_collection, position_x_2, label="disk 2")
-    axes[0, 0].plot(time_collection, position_x_3, label="disk 3")
-    axes[0, 0].set_xlabel("Time (s)")
-    axes[0, 0].set_ylabel("Position X (m)")
-    axes[0, 0].set_title("Position X")
-    axes[0, 0].legend()
-    axes[0, 0].grid(True)
+    for i in range(N_disks):
+        label = f"disk {i + 1}" if (show_all_labels or i in label_set) else None
+        color = cmap(i / max(N_disks - 1, 1))
+        pos_i = posture_collection[:, i, :3, 3]            # (T, 3)
+        axes[0, 0].plot(time_collection, pos_i[:, 0],                    color=color, label=label)
+        axes[0, 1].plot(time_collection, pos_i[:, 2],                    color=color, label=label)
+        axes[1, 0].plot(time_collection, orientation_collection[:, i, 0], color=color, label=label)
+        axes[1, 1].plot(time_collection, orientation_collection[:, i, 2], color=color, label=label)
 
-    axes[0, 1].plot(time_collection, position_z_1, label="disk 1")
-    axes[0, 1].plot(time_collection, position_z_2, label="disk 2")
-    axes[0, 1].plot(time_collection, position_z_3, label="disk 3")
-    axes[0, 1].set_xlabel("Time (s)")
-    axes[0, 1].set_ylabel("Position Z (m)")
-    axes[0, 1].set_title("Position Z")
-    axes[0, 1].legend()
-    axes[0, 1].grid(True)
-
-    axes[1, 0].plot(time_collection, theta_x_1, label="disk 1")
-    axes[1, 0].plot(time_collection, theta_x_2, label="disk 2")
-    axes[1, 0].plot(time_collection, theta_x_3, label="disk 3")
-    axes[1, 0].set_xlabel("Time (s)")
-    axes[1, 0].set_ylabel("Theta X (rad)")
-    axes[1, 0].set_title("Orientation Theta X")
-    axes[1, 0].legend()
-    axes[1, 0].grid(True)
-
-    axes[1, 1].plot(time_collection, theta_z_1, label="disk 1")
-    axes[1, 1].plot(time_collection, theta_z_2, label="disk 2")
-    axes[1, 1].plot(time_collection, theta_z_3, label="disk 3")
-    axes[1, 1].set_xlabel("Time (s)")
-    axes[1, 1].set_ylabel("Theta Z (rad)")
-    axes[1, 1].set_title("Orientation Theta Z")
-    axes[1, 1].legend()
-    axes[1, 1].grid(True)
+    plot_cfg = [
+        (axes[0, 0], "Time (s)", "Position X (m)",  "Position X"),
+        (axes[0, 1], "Time (s)", "Position Z (m)",  "Position Z"),
+        (axes[1, 0], "Time (s)", "Theta X (rad)",   "Orientation Theta X"),
+        (axes[1, 1], "Time (s)", "Theta Z (rad)",   "Orientation Theta Z"),
+    ]
+    for ax, xlabel, ylabel, title in plot_cfg:
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)
+        ax.set_title(title)
+        ax.legend(fontsize=8)
+        ax.grid(True)
 
     plt.tight_layout()
     plt.show()
+
+    # ── 3-D animation ────────────────────────────────────────────────────────
+    animate_slender_robot(
+        time_collection   = time_collection,
+        posture_collection= posture_collection,
+        force_collection  = force_collection,
+        hole_offset       = hole_arrangment,
+        disk_radius       = robot_radius,
+        output_path       = 'slender_robot_simulation.mp4',  # falls back to .gif if ffmpeg missing
+        fps               = 20,
+        force_scale       = 0.5,
+        skip_frames       = 5,
+    )
 
 

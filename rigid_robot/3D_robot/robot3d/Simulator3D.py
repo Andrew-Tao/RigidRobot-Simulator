@@ -1,13 +1,14 @@
-import numpy as np 
+import numpy as np
 from .methods3D import SE3LieAlgebra
 import matplotlib.pyplot as plt
 from scipy.spatial.transform import Rotation as R
 from .RigidRobot3D import ConnectedRigidRobots3D
+from tqdm import tqdm
 
 lie3 = SE3LieAlgebra()
 
 class Simulator3D:
-    def __init__(self, time_step = 0.1, duration = 10.0, control_logic: callable = None,stepper = 'explicit_euler'):
+    def __init__(self, time_step = 0.1, duration = 10.0, control_logic: callable = None, stepper = 'explicit_euler', show_progress = True):
         self.robot = list()  # List of robots in the simulation
         self.time_step = time_step
         self.duration = duration
@@ -21,10 +22,15 @@ class Simulator3D:
         self.orientation_collection = []
         # Since the posture matrix can no longer correctly track the constitution relationship
         # after the robot rotate 360 degrees. So wee need a true omega tracking twist over time
-
+        self._total_steps = int(duration / time_step)
+        self._last_pct = 0
+        self._pbar = tqdm(total=100, desc="Simulating", unit="%", bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt}% [{elapsed}<{remaining}]") if show_progress else None
 
     def run(self):
         if len(self.time_collection) * self.time_step >= self.duration:
+            if self._pbar is not None:
+                self._pbar.close()
+                self._pbar = None
             return False  # Simulation finished
         return True
 
@@ -82,7 +88,12 @@ class Simulator3D:
         self.force_collection.append(self.robot[0].compute_force_local(self.robot[0].control_input).copy())
         self.momentum_collection.append(self.robot[0].momentum.copy())
         self.orientation_collection.append(self.robot[0].orientation.copy())
-        
+        if self._pbar is not None:
+            current_pct = int(len(self.time_collection) / self._total_steps * 100)
+            if current_pct > self._last_pct:
+                self._pbar.update(current_pct - self._last_pct)
+                self._last_pct = current_pct
+
 def boundary(position: np.ndarray) -> bool:
     x, y = position
     in_bottom = (0 <= x <= 3)   and (0 <= y <= 1)
@@ -99,13 +110,13 @@ def control_logic(time):
 class MutiRobotSimulator3D():
     def __init__(
         self,
-        time_step: float, 
-        duration: float, 
+        time_step: float,
+        duration: float,
         stepper,
-        control_logic = None, 
-
+        control_logic = None,
+        show_progress = True,
         ):
-    
+
         self.connected_robot = None
         self.time_step = time_step
         self.duration = duration
@@ -122,6 +133,9 @@ class MutiRobotSimulator3D():
 
         self.external_force_list = [] # Collection of External Forces
         self.current_time = 0.0
+        self._total_steps = int(duration / time_step)
+        self._last_pct = 0
+        self._pbar = tqdm(total=100, desc="Simulating", unit="%", bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt}% [{elapsed}<{remaining}]") if show_progress else None
         
     
     def attach(self,robot: ConnectedRigidRobots3D):
@@ -129,9 +143,12 @@ class MutiRobotSimulator3D():
     
     def run(self):
         if len(self.time_collection) * self.time_step >= self.duration:
+            if self._pbar is not None:
+                self._pbar.close()
+                self._pbar = None
             return False  # Simulation finished
         return True
-    
+
     def add_external_force(self,force_type):
         self.external_force_list.append(force_type)
 
@@ -154,7 +171,8 @@ class MutiRobotSimulator3D():
         for force_type in self.external_force_list:  # Bug 10 fixed: iterate over the correct list
             external_force_k += force_type.compute_force_collection(self.connected_robot, self.current_time)  # Bug 11 fixed: pass slender_robot argument
         for i in range(n):
-            forces_k[i] += external_force_k[i]  # Bug 10 fixed: index into computed array, not the list
+            forces_k[i] += external_force_k[i]
+            
 
         # Now integrate all robots using only time-k states
         for i in range(n):
@@ -204,7 +222,7 @@ class MutiRobotSimulator3D():
            
             posture_frame.append(self.connected_robot.robots[i].posture.copy())
             velocity_matrix_frame.append(self.connected_robot.robots[i].velocity_matrix.copy())
-            force_frame.append(self.connected_robot.robots[i].compute_force_local(self.connected_robot.robots[i].control_input).copy())
+            force_frame.append(self.connected_robot.compute_force_local_total_individual_robot(robot_index=i, external_force=np.zeros(6)).copy())
             momentum_frame.append(self.connected_robot.robots[i].momentum.copy())
             orientation_frame.append(self.connected_robot.robots[i].orientation.copy())
 
@@ -221,6 +239,11 @@ class MutiRobotSimulator3D():
         self.force_collection.append(force_frame)
         self.momentum_collection.append(momentum_frame)
         self.orientation_collection.append(orientation_frame)
+        if self._pbar is not None:
+            current_pct = int(len(self.posture_collection) / self._total_steps * 100)
+            if current_pct > self._last_pct:
+                self._pbar.update(current_pct - self._last_pct)
+                self._last_pct = current_pct
         
         
 

@@ -154,6 +154,8 @@ class ConnectedRigidRobots3D:
         number_of_connection = len(connection)
         total_force = np.zeros(6)
 
+        
+
         for i in range(number_of_connection):
             if not connection[i].to_base:
                 anchor_robot = self.robots[connection[i].to]
@@ -174,6 +176,14 @@ class ConnectedRigidRobots3D:
             spring_stiffness = connection[i].spring_stiffness
             torque_spring_stiffness = connection[i].torque_spring_stiffness
             spring_original_length = connection[i].spring_original_length
+            if robot_index == 1:
+                #print("Connection",number_of_connection)
+                pass
+                print("spring_anchor_point",spring_anchor_point)
+                print("anchor_velocity_world",anchor_velocity_world)
+                test_flag = True
+            else:
+                test_flag = False
             total_force += self.compute_single_spring_force(
                 robot = self.robots[robot_index],
                 spring_anchor_point = spring_anchor_point,
@@ -183,6 +193,7 @@ class ConnectedRigidRobots3D:
                 spring_original_length = spring_original_length,
                 anchor_velocity_world=anchor_velocity_world,
                 anchor_angular_velocity_world=anchor_angular_velocity_world,
+                test_flag = test_flag
             )
         total_force += self.robots[robot_index].control_input
         total_force += external_force
@@ -199,6 +210,7 @@ class ConnectedRigidRobots3D:
         spring_original_length=0.04,
         anchor_velocity_world=np.zeros(3),
         anchor_angular_velocity_world=np.zeros(3),
+        test_flag = False,
         ):
 
         # TODO: Write a add_damping method
@@ -231,6 +243,10 @@ class ConnectedRigidRobots3D:
         tau_x, tau_y, tau_z = - torque_spring_stiffness * theta - torque_spring_damping_coefficient * relative_omega
 
         total_force_local = np.array([f_x, f_y, f_z, tau_x, tau_y, tau_z])
+        if test_flag == True: 
+            print("spring_current_lenght",spring_current_length)
+            print(total_force_local)
+        print("\n")
 
         return total_force_local
 

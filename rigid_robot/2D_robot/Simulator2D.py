@@ -1,10 +1,11 @@
-import numpy as np 
+import numpy as np
 from methods2D import SE2LieAlgebra
 import matplotlib.pyplot as plt
+from tqdm import tqdm
 lie2 = SE2LieAlgebra()
 
 class Simulator2D:
-    def __init__(self, time_step = 0.1, duration = 10.0, control_logic: callable = None,stepper = 'explicit_euler'):
+    def __init__(self, time_step = 0.1, duration = 10.0, control_logic: callable = None, stepper = 'explicit_euler', show_progress = True):
         self.robot = list()  # List of robots in the simulation
         self.time_step = time_step
         self.duration = duration
@@ -15,11 +16,15 @@ class Simulator2D:
         self.velocity_matrix_collection = []  # To store robot velocities over time
         self.force_collection = []  # To store forces over time
         self.momentum_collection = []  # To store momentum over time
-        
-
+        self._total_steps = int(duration / time_step)
+        self._last_pct = 0
+        self._pbar = tqdm(total=100, desc="Simulating", unit="%", bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt}% [{elapsed}<{remaining}]") if show_progress else None
 
     def run(self):
         if len(self.time_collection) * self.time_step >= self.duration:
+            if self._pbar is not None:
+                self._pbar.close()
+                self._pbar = None
             return False  # Simulation finished
         return True
 
@@ -77,6 +82,11 @@ class Simulator2D:
         self.velocity_matrix_collection.append(self.robot[0].velocity_matrix.copy())
         self.force_collection.append(self.robot[0].compute_force_local(self.robot[0].control_input).copy())
         self.momentum_collection.append(self.robot[0].momentum.copy())
+        if self._pbar is not None:
+            current_pct = int(len(self.time_collection) / self._total_steps * 100)
+            if current_pct > self._last_pct:
+                self._pbar.update(current_pct - self._last_pct)
+                self._last_pct = current_pct
         
 def boundary(position: np.ndarray) -> bool:
     x, y = position

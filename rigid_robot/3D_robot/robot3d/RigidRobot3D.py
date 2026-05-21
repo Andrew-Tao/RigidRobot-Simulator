@@ -62,6 +62,8 @@ class RigidRobot3D:
             angular_velocity[2]])
         velocity_matrix = lie3.hat(velocity_vector)
         return velocity_matrix
+    
+    #TODO: The Constitutive relationship is not updated. So it's generally not correct !!!!! The most up-to-date one is the one for the ConnectdRigidRobot
 
     def compute_force_local(
         self, 
@@ -72,6 +74,8 @@ class RigidRobot3D:
         torque_spring_stiffness=0.01,
         spring_original_length=0.04
         ):
+
+        
 
         damping_coefficient = 0.1
         position = self.posture[:3, 3]
@@ -131,6 +135,8 @@ class Connection:
     spring_stiffness: float
     torque_spring_anchor_orientation: np.ndarray
     torque_spring_stiffness: float
+    spring_damping_coefficient: np.ndarray
+    torque_spring_damping_coefficient: np.ndarray
 
 @dataclass
 class ExternalForce:
@@ -168,15 +174,24 @@ class ConnectedRigidRobots3D:
                 aw_y = anchor_robot.velocity_matrix[0, 2]
                 aw_z = anchor_robot.velocity_matrix[1, 0]
                 anchor_angular_velocity_world = anchor_Q @ np.array([aw_x, aw_y, aw_z])
+
+                #TODO: If you get direction like this, when you model the slender robot seq have to be [base, robot0, robot1 ...]
+                is_upon_sequence_flag = True if connection[i].to > robot_index else False 
+
             else:
                 spring_anchor_point = np.zeros(3)
                 torque_spring_anchor_orientation = np.zeros(3)
                 anchor_velocity_world = np.zeros(3)
                 anchor_angular_velocity_world = np.zeros(3)
+                is_upon_sequence_flag = False
+
             spring_stiffness = connection[i].spring_stiffness
             torque_spring_stiffness = connection[i].torque_spring_stiffness
             spring_original_length = connection[i].spring_original_length
-            if robot_index == 1:
+            spring_damping_coefficient = connection[i].spring_damping_coefficient
+            torque_spring_damping_coefficient = connection[i].torque_spring_damping_coefficient
+
+            if robot_index == 0:
                 #print("Connection",number_of_connection)
                 pass
                 #print("spring_anchor_point",spring_anchor_point)
@@ -186,6 +201,7 @@ class ConnectedRigidRobots3D:
                 test_flag = False
             total_force += self.compute_single_spring_force(
                 robot = self.robots[robot_index],
+                is_upon_anchor_disk= is_upon_sequence_flag,
                 spring_anchor_point = spring_anchor_point,
                 torque_spring_anchor_orientation= torque_spring_anchor_orientation,
                 spring_stiffness= spring_stiffness,
@@ -193,7 +209,10 @@ class ConnectedRigidRobots3D:
                 spring_original_length = spring_original_length,
                 anchor_velocity_world=anchor_velocity_world,
                 anchor_angular_velocity_world=anchor_angular_velocity_world,
-                test_flag = test_flag
+                test_flag = test_flag,
+                spring_damping_coefficient= spring_damping_coefficient,
+                torque_spring_damping_coefficient= torque_spring_damping_coefficient
+
             )
         total_force += self.robots[robot_index].control_input
         total_force += external_force
@@ -203,20 +222,22 @@ class ConnectedRigidRobots3D:
     def compute_single_spring_force(
         self,
         robot: RigidRobot3D,
+        is_upon_anchor_disk: bool, 
         spring_anchor_point=np.array([0.0, 0.0, 0.0]),
         torque_spring_anchor_orientation = np.array([0.0, 0.0, 0.0]),
-        spring_stiffness=1,
-        torque_spring_stiffness=0.01,
+        spring_stiffness=np.array([1.0,1.0,1.0]),
+        torque_spring_stiffness=np.array([0.01,0.01,0.01]),
         spring_original_length=0.04,
         anchor_velocity_world=np.zeros(3),
         anchor_angular_velocity_world=np.zeros(3),
         test_flag = False,
         shear_stiffness = 5.0,
+        spring_damping_coefficient = np.array([1.0,1.0,1.0]),
+        torque_spring_damping_coefficient = np.array([1e-3,1e-3,1e-3])
         ):
 
         # TODO: Write a add_damping method
-        spinrg_damping_coefficient = 1.0
-        torque_spring_damping_coefficient = 0.001
+
 
         position = robot.posture[:3, 3]
         orientation_Q = robot.posture[:3, :3]
@@ -225,45 +246,84 @@ class ConnectedRigidRobots3D:
         omega_x, omega_y, omega_z   = robot.velocity_matrix[2, 1], robot.velocity_matrix[0, 2], robot.velocity_matrix[1, 0]    # angular velocity
         omega = np.array([omega_x, omega_y, omega_z])
 
-        spring_anchor_point_local = np.linalg.inv(orientation_Q) @ (spring_anchor_point - position)
-        spring_current_length = np.linalg.norm(spring_anchor_point_local)
-        delta_length = spring_current_length - spring_original_length
+        #---------------------------------Elongation & Shear -------------------------------------
+        relative_spring_anchor_point_global = (spring_anchor_point - position)
+        original_front_direction_vector = spring_original_length * orientation_Q[:3,2] 
+        if is_upon_anchor_disk: original_front_direction_vector = - original_front_direction_vector 
+        strain_local = np.linalg.inv(orientation_Q) @ (relative_spring_anchor_point_global - original_front_direction_vector) # strain_L = Q.T (et - d3)
 
-        if spring_current_length > 1e-6:
-            unit_anchor_vector_local = spring_anchor_point_local / spring_current_length
-        else:
-            unit_anchor_vector_local = np.zeros(3)
-
-        # Damping uses relative velocity: v_self_world - v_anchor_world, expressed in body frame
+         # Damping uses relative velocity: v_self_world - v_anchor_world, expressed in body frame
         relative_velocity_body = v_body - orientation_Q.T @ anchor_velocity_world
 
-        #---------------------------------Elongation------------------------------------
-        linear_spring_force_local = (delta_length * unit_anchor_vector_local) * spring_stiffness
-        f_x, f_y, f_z = linear_spring_force_local - spinrg_damping_coefficient * relative_velocity_body
+        linear_spring_force_local = strain_local * spring_stiffness
+        f_x, f_y, f_z = linear_spring_force_local - spring_damping_coefficient * relative_velocity_body
 
         #---------------------------------Bending & Twisting ------------------------------
         theta = robot.orientation.copy() - torque_spring_anchor_orientation
         relative_omega = omega - orientation_Q.T @ anchor_angular_velocity_world
-        tau_x, tau_y, tau_z = - torque_spring_stiffness * theta - torque_spring_damping_coefficient * relative_omega
-
-        # ------------------------------- Shearing Force --------------------------------
-        lateral_displacement = spring_anchor_point_local.copy()
-        lateral_displacement[2] = 0.0
-        shear_force = shear_stiffness * lateral_displacement 
-        f_x, f_y, f_z = np.array([f_x, f_y, f_z]) + shear_force
+        bend_twist_internal_couple = - torque_spring_stiffness * theta
+        #TODO: Is this correct ???????
+        front_direction_unit_vector = np.array([0.0, 0.0, 1.0])
+        if is_upon_anchor_disk: front_direction_unit_vector = - front_direction_unit_vector
+        shear_stretch_internal_couple =  spring_original_length * np.cross(front_direction_unit_vector, linear_spring_force_local)
+        tau_x, tau_y, tau_z = bend_twist_internal_couple + shear_stretch_internal_couple - torque_spring_damping_coefficient * relative_omega
 
         total_force_local = np.array([f_x, f_y, f_z, tau_x, tau_y, tau_z])
         if test_flag == True: 
             pass 
-
-            #print("spring_current_lenght",spring_current_length)
+            #print("spring_anchor_point",  spring_anchor_point)
+            #print("is_upon",is_upon_anchor_disk)
+           
             #print("position",position)
-            #print("anchor_point_local",spring_anchor_point_local)
+            #print("strain_local",strain_local)
+            #print("original_front", original_front_direction_vector )
+            #print("Spring_anchor_point_global_relative", relative_spring_anchor_point_global)
             #print(total_force_local)
-        print("\n")
+        #print("\n")
 
         return total_force_local
 
+
+    def compute_internal_force(self, robot_index: int):
+        """Spring/damping forces only — excludes control_input and external_force."""
+        connection = self.connection_map[robot_index]
+        total_force = np.zeros(6)
+        for i in range(len(connection)):
+            if not connection[i].to_base:
+                anchor_robot = self.robots[connection[i].to]
+                spring_anchor_point = anchor_robot.posture[:3, 3]
+                torque_spring_anchor_orientation = anchor_robot.orientation
+                anchor_Q = anchor_robot.posture[:3, :3]
+                anchor_velocity_world = anchor_Q @ anchor_robot.velocity_matrix[:3, 3]
+                aw_x = anchor_robot.velocity_matrix[2, 1]
+                aw_y = anchor_robot.velocity_matrix[0, 2]
+                aw_z = anchor_robot.velocity_matrix[1, 0]
+                anchor_angular_velocity_world = anchor_Q @ np.array([aw_x, aw_y, aw_z])
+                is_upon_sequence_flag = connection[i].to > robot_index
+            else:
+                spring_anchor_point = np.zeros(3)
+                torque_spring_anchor_orientation = np.zeros(3)
+                anchor_velocity_world = np.zeros(3)
+                anchor_angular_velocity_world = np.zeros(3)
+                is_upon_sequence_flag = False
+
+            total_force += self.compute_single_spring_force(
+                robot=self.robots[robot_index],
+                is_upon_anchor_disk=is_upon_sequence_flag,
+                spring_anchor_point=spring_anchor_point,
+                torque_spring_anchor_orientation=torque_spring_anchor_orientation,
+                spring_stiffness=connection[i].spring_stiffness,
+                torque_spring_stiffness=connection[i].torque_spring_stiffness,
+                spring_original_length=connection[i].spring_original_length,
+                anchor_velocity_world=anchor_velocity_world,
+                anchor_angular_velocity_world=anchor_angular_velocity_world,
+                test_flag=False,
+                spring_damping_coefficient=connection[i].spring_damping_coefficient,
+                torque_spring_damping_coefficient=connection[i].torque_spring_damping_coefficient,
+            )
+        return total_force
+
+   
 
     def add_connection(self,
         index_pairs:tuple, # If to_base is true, the second elment is ignored
@@ -271,10 +331,12 @@ class ConnectedRigidRobots3D:
         # So far this will always be zero, No offset allowed
         spring_anchor_point_local_1=np.array([0.0, 0.0, 0.0]), # spring_anchor_point at the robot's local frame. Offset to center of robot1
         spring_anchor_point_local_2 = np.array([0.0,0.0,0.0]),  # spring_anchor_point at the robot's local frame. Offset to center of robot2
-        spring_stiffness=1,
+        spring_stiffness=np.array([1.0,1.0,1.0]),
         torque_spring_anchor_orientation=np.diag([1.0, 1.0, 1.0]),
-        torque_spring_stiffness=0.01,
+        torque_spring_stiffness=np.array([1.0,1.0,1.0]),
         spring_original_length=0.04,
+        spring_damping_coefficient = np.array([1.0,1.0,1.0]),
+        torque_spring_damping_coefficient = np.array([1e-3,1e-3,1e-3])
         ):
 
         "index_pair: (first robot index, second robot index)"
@@ -289,6 +351,8 @@ class ConnectedRigidRobots3D:
             spring_stiffness=spring_stiffness,
             torque_spring_anchor_orientation=torque_spring_anchor_orientation,
             torque_spring_stiffness=torque_spring_stiffness,
+            spring_damping_coefficient = spring_damping_coefficient,
+            torque_spring_damping_coefficient = torque_spring_damping_coefficient
         ))
 
         if not to_base:
@@ -301,6 +365,8 @@ class ConnectedRigidRobots3D:
                 spring_stiffness=spring_stiffness,
                 torque_spring_anchor_orientation=torque_spring_anchor_orientation,
                 torque_spring_stiffness=torque_spring_stiffness,
+                spring_damping_coefficient = spring_damping_coefficient,
+                torque_spring_damping_coefficient = torque_spring_damping_coefficient
             ))
             
   

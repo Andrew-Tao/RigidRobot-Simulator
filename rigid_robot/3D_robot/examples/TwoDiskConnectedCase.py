@@ -56,9 +56,12 @@ if __name__ == "__main__":
     )
     robot_collection = [robot_disk_1, robot_disk_2]
 
+    k_s = np.array([1.0,1.0,1.0])
+    k_t = np.array([0.01,0.01,0.01])
+
     slender_robot = ConnectedRigidRobots3D(robots=robot_collection)
-    slender_robot.add_connection((0, 1), to_base=True)
-    slender_robot.add_connection((0, 1), to_base=False)
+    slender_robot.add_connection((0, 1), to_base=True, spring_stiffness= k_s, torque_spring_stiffness= k_t)
+    slender_robot.add_connection((0, 1), to_base=False, spring_stiffness= k_s, torque_spring_stiffness=k_t)
 
     simulator_slender = MutiRobotSimulator3D(
         time_step=0.01,
@@ -68,7 +71,7 @@ if __name__ == "__main__":
     )
 
     simulator_slender.attach(slender_robot)
-    simulator_slender.connected_robot.robots[1].control_input = np.array([0.1, 0.0, 0.0, 0.0, 0.0, 0.0])
+    simulator_slender.connected_robot.robots[1].control_input = np.array([0.8, 0.0, 0.0, 0.0, 0.0, 0.0])
 
     while simulator_slender.run():
         if simulator_slender.current_time >= 0.5:

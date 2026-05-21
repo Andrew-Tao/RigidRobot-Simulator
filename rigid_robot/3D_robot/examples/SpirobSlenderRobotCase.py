@@ -21,7 +21,7 @@ import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from robot3d.RigidRobot3D import RigidRobot3D, ConnectedRigidRobots3D
 from robot3d.Simulator3D import Simulator3D, MutiRobotSimulator3D
-from robot3d.CableDrivenForce import CableDrivenForce
+from robot3d.CableDrivenForce import CableDrivenForce, GravityForce
 import numpy as np
 from robot3d.methods3D import SE3LieAlgebra
 import matplotlib.pyplot as plt
@@ -131,24 +131,24 @@ if __name__ == "__main__":
     )
 
     # Add connection map for the robot
-    k_s = 10.0
-    k_t = 0.04
+    k_s = np.array([1.0,1.0,1.0])
+    k_t = np.array([0.01,0.01,0.01])
+    spring_damp = np.array([1.0, 1.0, 1.0])
+    tor_spring_damp = np.array([2e-3, 2e-3, 2e-3])
 
-    slender_robot.add_connection((0,1), to_base= True, spring_stiffness= k_s, torque_spring_stiffness= k_t)
-    slender_robot.add_connection((0,1), to_base= False, spring_stiffness= k_s, torque_spring_stiffness= k_t)
-    slender_robot.add_connection((1,2), to_base= False,spring_stiffness= k_s, torque_spring_stiffness= k_t)
-    slender_robot.add_connection((2,3), to_base= False,spring_stiffness= k_s, torque_spring_stiffness= k_t)
-    slender_robot.add_connection((3,4), to_base= False,spring_stiffness= k_s, torque_spring_stiffness= k_t)
-    slender_robot.add_connection((4,5), to_base= False,spring_stiffness= k_s, torque_spring_stiffness= k_t)
-    slender_robot.add_connection((5,6), to_base= False,spring_stiffness= k_s, torque_spring_stiffness= k_t)
 
+
+    slender_robot.add_connection((0,1), to_base= True, spring_stiffness= k_s, torque_spring_stiffness= k_t, spring_damping_coefficient= spring_damp, torque_spring_damping_coefficient= tor_spring_damp)
+    for i in range(6):
+        slender_robot.add_connection((i,i+1), to_base= False, spring_stiffness= k_s, torque_spring_stiffness= k_t, spring_damping_coefficient=spring_damp, torque_spring_anchor_orientation=tor_spring_damp)
+   
 
     # Add external force - CableDrivenForce
 
     
 
     def control_logic(time: float):
-        cable_driven_force = np.array([0.0, 0.0, 0.09]) if time < 20.0 else np.zeros(3)
+        cable_driven_force = np.array([0.0, 0.0, 0.0]) if time < 20.0 else np.zeros(3)
         return cable_driven_force
     
     base_hole_offset = np.array([0.8 * robot_radius, 0.0, 0.0])
@@ -159,6 +159,8 @@ if __name__ == "__main__":
         hole_offset= hole_arrangment
     )
 
+    gravity_force = GravityForce()
+
     simulator_slender = MutiRobotSimulator3D(
         time_step = 0.01,
         duration = 20,
@@ -168,22 +170,30 @@ if __name__ == "__main__":
 
     simulator_slender.attach(slender_robot)
     simulator_slender.add_external_force(cable_driven_force)
+    #simulator_slender.add_external_force(gravity_force)
 
-    #simulator_slender.connected_robot.robots[1].control_input = np.array([0.1,0.0,0.0,0.0,0.0,0.0])
+    for i in range(6):
+        simulator_slender.connected_robot.robots[i].control_input = np.array([0.0,0.005,0.0,0.000,0.0,0.0])
+    for i in range(6,7):
+        simulator_slender.connected_robot.robots[i].control_input = np.array([0.0,0.005,0.0,0.00,0.0,0.0])
+    #simulator_slender.connected_robot.robots[6].control_input = np.array([0.0,0.001,0.0,0.0,0.0,0.0])
+   
 
     while simulator_slender.run():
-        if simulator_slender.current_time >= 0.5:
-            simulator_slender.connected_robot.robots[1].control_input = np.zeros(6)
+        if simulator_slender.current_time >= 40:
+            for i in range(7): 
+                simulator_slender.connected_robot.robots[i].control_input = np.zeros(6)
         simulator_slender.multi_robots_step()
         simulator_slender.multi_robot_record()
 
     # Data collection (place holder for now)
     #print(len(simulator_slender.time_collection))
     time_collection = np.array(simulator_slender.time_collection)
-    
+
     posture_collection = np.array(simulator_slender.posture_collection)
     orientation_collection = np.array(simulator_slender.orientation_collection)
     force_collection = np.array(simulator_slender.force_collection)
+    internal_force_collection = np.array(simulator_slender.internal_force_collection)
     #print("force_colleciton", force_collection)
 
     N_disks = posture_collection.shape[1]
@@ -220,6 +230,28 @@ if __name__ == "__main__":
         ax.grid(True)
 
     plt.tight_layout()
+
+    # --- Forces & Torques (all 6 components) ---
+    force_labels = ["fx (N)", "fy (N)", "fz (N)", "tx (N·m)", "ty (N·m)", "tz (N·m)"]
+    force_titles = ["Force X", "Force Y", "Force Z", "Torque X", "Torque Y", "Torque Z"]
+
+    fig2, axes2 = plt.subplots(2, 3, figsize=(15, 8))
+    fig2.suptitle("Spirob Slender Robot: Internal Forces & Torques on Each Disk (excl. control input)")
+
+    for idx in range(6):
+        row, col = divmod(idx, 3)
+        ax = axes2[row, col]
+        for i in range(N_disks):
+            label = f"disk {i + 1}" if (show_all_labels or i in label_set) else None
+            color = cmap(i / max(N_disks - 1, 1))
+            ax.plot(time_collection, internal_force_collection[:, i, idx], color=color, label=label)
+        ax.set_xlabel("Time (s)")
+        ax.set_ylabel(force_labels[idx])
+        ax.set_title(force_titles[idx])
+        ax.legend(fontsize=8)
+        ax.grid(True)
+
+    fig2.tight_layout()
     plt.show()
 
     # ── 3-D animation ────────────────────────────────────────────────────────
@@ -233,8 +265,8 @@ if __name__ == "__main__":
         fps               = 20,
         force_scale       = 0.5,
         skip_frames       = 5,
-        view_yaw          = -60.0,   # degrees — rotate camera around world Z
-        view_pitch        = 30.0,    # degrees — camera elevation above horizontal
+        view_yaw          = 0.0,   # degrees — rotate camera around world Z
+        view_pitch        = 0.0,    # degrees — camera elevation above horizontal
         view_roll         = 0.0,     # degrees — roll around the line of sight
     )
 

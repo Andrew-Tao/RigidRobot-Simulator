@@ -48,6 +48,9 @@ def animate_slender_robot(
     force_scale: float = 1.0,
     skip_frames: int = 1,
     show_tension_arrows: bool = True,
+    view_yaw: float = -60.0,
+    view_pitch: float = 30.0,
+    view_roll: float = 0.0,
 ):
     """
     Generate an MP4 animation of a slender disk-chain robot.
@@ -80,6 +83,12 @@ def animate_slender_robot(
     show_tension_arrows: bool
         Draw small arrows at each cable hole showing tension direction.
         Automatically disabled when N > 20 to keep the scene readable.
+    view_yaw   : float
+        Camera azimuth angle in degrees (rotation around world Z). Default -60.
+    view_pitch : float
+        Camera elevation angle in degrees above the horizontal plane. Default 30.
+    view_roll  : float
+        Camera roll angle in degrees around the line of sight. Default 0.
     """
     posture_collection = np.asarray(posture_collection, dtype=float)
     time_collection    = np.asarray(time_collection,    dtype=float)
@@ -100,9 +109,15 @@ def animate_slender_robot(
         all_pts = all_pos.reshape(-1, 3)
 
     pad = max(disk_radius * 4, 0.02)
-    xl  = (all_pts[:, 0].min() - pad, all_pts[:, 0].max() + pad)
-    yl  = (all_pts[:, 1].min() - pad, all_pts[:, 1].max() + pad)
-    zl  = (all_pts[:, 2].min() - pad * 2, all_pts[:, 2].max() + pad)
+    mid = all_pts.mean(axis=0)
+    half = max(
+        all_pts[:, 0].max() - all_pts[:, 0].min(),
+        all_pts[:, 1].max() - all_pts[:, 1].min(),
+        all_pts[:, 2].max() - all_pts[:, 2].min(),
+    ) / 2 + pad
+    xl = (mid[0] - half, mid[0] + half)
+    yl = (mid[1] - half, mid[1] + half)
+    zl = (mid[2] - half, mid[2] + half)
 
     _draw_arrows = show_tension_arrows and N <= 20
 
@@ -119,6 +134,7 @@ def animate_slender_robot(
         ax.set_ylabel('Y (m)', fontsize=9)
         ax.set_zlabel('Z (m)', fontsize=9)
         ax.set_title(f'Slender Robot  —  t = {time_collection[t_idx]:.3f} s', fontsize=11)
+        ax.view_init(elev=view_pitch, azim=view_yaw, roll=view_roll)
 
         centers = posture_collection[t_idx, :, :3, 3]  # (N, 3)
 

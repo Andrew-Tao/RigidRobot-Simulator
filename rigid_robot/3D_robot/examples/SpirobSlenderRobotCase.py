@@ -233,6 +233,9 @@ if __name__ == "__main__":
         fps               = 20,
         force_scale       = 0.5,
         skip_frames       = 5,
+        view_yaw          = -60.0,   # degrees — rotate camera around world Z
+        view_pitch        = 30.0,    # degrees — camera elevation above horizontal
+        view_roll         = 0.0,     # degrees — roll around the line of sight
     )
 
 

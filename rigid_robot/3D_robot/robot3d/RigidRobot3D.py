@@ -191,14 +191,7 @@ class ConnectedRigidRobots3D:
             spring_damping_coefficient = connection[i].spring_damping_coefficient
             torque_spring_damping_coefficient = connection[i].torque_spring_damping_coefficient
 
-            if robot_index == 0:
-                #print("Connection",number_of_connection)
-                pass
-                #print("spring_anchor_point",spring_anchor_point)
-                #print("anchor_velocity_world",anchor_velocity_world)
-                test_flag = True
-            else:
-                test_flag = False
+            test_flag = robot_index
             total_force += self.compute_single_spring_force(
                 robot = self.robots[robot_index],
                 is_upon_anchor_disk= is_upon_sequence_flag,
@@ -216,7 +209,14 @@ class ConnectedRigidRobots3D:
             )
         total_force += self.robots[robot_index].control_input
         total_force += external_force
-
+        
+        """
+        if robot_index == 1:
+            from tqdm import tqdm
+            print(f"external_force {external_force}")
+            print(f"control_input {self.robots[robot_index].control_input}")
+            print(f"total_force {total_force}")
+        """
         return total_force
 
     def compute_single_spring_force(
@@ -230,7 +230,7 @@ class ConnectedRigidRobots3D:
         spring_original_length=0.04,
         anchor_velocity_world=np.zeros(3),
         anchor_angular_velocity_world=np.zeros(3),
-        test_flag = False,
+        test_flag = 3,
         shear_stiffness = 5.0,
         spring_damping_coefficient = np.array([1.0,1.0,1.0]),
         torque_spring_damping_coefficient = np.array([1e-3,1e-3,1e-3])
@@ -263,23 +263,26 @@ class ConnectedRigidRobots3D:
         relative_omega = omega - orientation_Q.T @ anchor_angular_velocity_world
         bend_twist_internal_couple = - torque_spring_stiffness * theta
         #TODO: Is this correct ???????
-        front_direction_unit_vector = np.array([0.0, 0.0, 1.0])
-        if is_upon_anchor_disk: front_direction_unit_vector = - front_direction_unit_vector
+        front_direction_unit_vector = - np.array([0.0, 0.0, 1.0])
+        
         shear_stretch_internal_couple =  spring_original_length * np.cross(front_direction_unit_vector, linear_spring_force_local)
+        if not is_upon_anchor_disk: shear_stretch_internal_couple = np.zeros(3)
         tau_x, tau_y, tau_z = bend_twist_internal_couple + shear_stretch_internal_couple - torque_spring_damping_coefficient * relative_omega
 
         total_force_local = np.array([f_x, f_y, f_z, tau_x, tau_y, tau_z])
-        if test_flag == True: 
+        if 0 == 1: 
             pass 
-            #print("spring_anchor_point",  spring_anchor_point)
-            #print("is_upon",is_upon_anchor_disk)
+            print("robot_index", test_flag)
+            print("spring_anchor_point",  spring_anchor_point)
+            print("is_upon",is_upon_anchor_disk)
            
             #print("position",position)
-            #print("strain_local",strain_local)
+            print("strain_local",strain_local)
             #print("original_front", original_front_direction_vector )
             #print("Spring_anchor_point_global_relative", relative_spring_anchor_point_global)
-            #print(total_force_local)
-        #print("\n")
+            print("total_force", total_force_local)
+            print("shear_induced_couple", shear_stretch_internal_couple)
+        print("\n")
 
         return total_force_local
 
@@ -317,7 +320,7 @@ class ConnectedRigidRobots3D:
                 spring_original_length=connection[i].spring_original_length,
                 anchor_velocity_world=anchor_velocity_world,
                 anchor_angular_velocity_world=anchor_angular_velocity_world,
-                test_flag=False,
+                test_flag=3,
                 spring_damping_coefficient=connection[i].spring_damping_coefficient,
                 torque_spring_damping_coefficient=connection[i].torque_spring_damping_coefficient,
             )

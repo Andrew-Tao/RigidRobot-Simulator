@@ -25,6 +25,7 @@ import numpy as np
 from robot3d.methods3D import SE3LieAlgebra
 import matplotlib.pyplot as plt
 from scipy.spatial.transform import Rotation as R
+from SlenderRobotVisualization import animate_slender_robot
 
 
 lie3 = SE3LieAlgebra()
@@ -56,25 +57,33 @@ if __name__ == "__main__":
     )
     robot_collection = [robot_disk_1, robot_disk_2]
 
-    k_s = np.array([1.0,1.0,1.0])
-    k_t = np.array([0.01,0.01,0.01])
+    k_s = np.array([50.0,50.0,1.0])
+    k_t = np.array([0.001,0.001,0.001])
 
     slender_robot = ConnectedRigidRobots3D(robots=robot_collection)
     slender_robot.add_connection((0, 1), to_base=True, spring_stiffness= k_s, torque_spring_stiffness= k_t)
     slender_robot.add_connection((0, 1), to_base=False, spring_stiffness= k_s, torque_spring_stiffness=k_t)
 
     simulator_slender = MutiRobotSimulator3D(
-        time_step=0.01,
-        duration=30,
+        time_step=0.001,
+        duration=10,
         stepper='explicit_euler',
         control_logic=None,
     )
 
     simulator_slender.attach(slender_robot)
-    simulator_slender.connected_robot.robots[1].control_input = np.array([0.8, 0.0, 0.0, 0.0, 0.0, 0.0])
+    force_world = np.array([0.0, 0.01, 0.0])
+    Q0 = simulator_slender.connected_robot.robots[0].posture[:3, :3]
+    Q1 = simulator_slender.connected_robot.robots[1].posture[:3, :3]
+    simulator_slender.connected_robot.robots[0].control_input = np.concatenate([Q0.T @ force_world, np.zeros(3)])
+    simulator_slender.connected_robot.robots[1].control_input = np.concatenate([Q1.T @ force_world, np.zeros(3)])
+
+    #simulator_slender.connected_robot.robots[0].control_input = np.array([0.0, 0.01, 0.0, 0.0, 0.0, 0.0])
+    #simulator_slender.connected_robot.robots[1].control_input = np.array([0.0, 0.01, 0.0, 0.0, 0.0, 0.0])
+
 
     while simulator_slender.run():
-        if simulator_slender.current_time >= 0.5:
+        if simulator_slender.current_time >= 30:
             simulator_slender.connected_robot.robots[1].control_input = np.zeros(6)
         simulator_slender.multi_robots_step()
         simulator_slender.multi_robot_record()
@@ -158,3 +167,22 @@ if __name__ == "__main__":
 
     fig2.tight_layout()
     plt.show()
+
+
+    robot_radius = 0.03
+        # ── 3-D animation ────────────────────────────────────────────────────────
+    animate_slender_robot(
+        time_collection   = time_collection,
+        posture_collection= posture_collection,
+        force_collection  = force_collection,
+        disk_radius       = robot_radius,
+        output_path       = 'slender_robot_simulation.mp4',  # falls back to .gif if ffmpeg missing
+        fps               = 20,
+        force_scale       = 0.5,
+        skip_frames       = 5,
+        view_yaw          = 0.0,   # degrees — rotate camera around world Z
+        view_pitch        = 0.0,    # degrees — camera elevation above horizontal
+        view_roll         = 0.0,     # degrees — roll around the line of sight
+    )
+
+

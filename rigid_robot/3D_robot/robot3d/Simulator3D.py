@@ -238,6 +238,7 @@ class MutiRobotSimulator3D():
         orientation_frame = np.array(orientation_frame)
 
 
+        self.time_collection.append(self.current_time)
         self.posture_collection.append(posture_frame)
         self.velocity_matrix_collection.append(velocity_matrix_frame)
         self.force_collection.append(force_frame)

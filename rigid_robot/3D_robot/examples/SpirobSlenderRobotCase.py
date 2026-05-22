@@ -131,9 +131,9 @@ if __name__ == "__main__":
     )
 
     # Add connection map for the robot
-    k_s = np.array([1.0,1.0,1.0])
-    k_t = np.array([0.01,0.01,0.01])
-    spring_damp = np.array([1.0, 1.0, 1.0])
+    k_s = np.array([1.0,1.0,10.0])
+    k_t = np.array([0.02,0.02,0.01])
+    spring_damp = np.array([8e-1, 8e-1, 8e-1])
     tor_spring_damp = np.array([1e-3, 1e-3, 1e-3])
 
 
@@ -173,7 +173,7 @@ if __name__ == "__main__":
     #simulator_slender.add_external_force(gravity_force)
 
     for i in range(7):
-        simulator_slender.connected_robot.robots[i].control_input = np.array([0.0,0.005,0.0,0.000,0.0,0.0])
+        simulator_slender.connected_robot.robots[i].control_input = np.array([0.0,0.004,0.0,0.000,0.0,0.0])
 
     #simulator_slender.connected_robot.robots[6].control_input = np.array([0.0,0.001,0.0,0.0,0.0,0.0])
    
@@ -264,9 +264,9 @@ if __name__ == "__main__":
         fps               = 20,
         force_scale       = 0.5,
         skip_frames       = 5,
-        view_yaw          = 0.0,   # degrees — rotate camera around world Z
+        view_yaw          = 180.0,   # degrees — rotate camera around world Z
         view_pitch        = 0.0,    # degrees — camera elevation above horizontal
-        view_roll         = 0.0,     # degrees — roll around the line of sight
+        view_roll         = 90.0,     # degrees — roll around the line of sight
     )
 
 

@@ -205,8 +205,8 @@ class ConnectedRigidRobots3D:
                 test_flag = test_flag,
                 spring_damping_coefficient= spring_damping_coefficient,
                 torque_spring_damping_coefficient= torque_spring_damping_coefficient
-
             )
+
         total_force += self.robots[robot_index].control_input
         total_force += external_force
         
@@ -270,7 +270,7 @@ class ConnectedRigidRobots3D:
         tau_x, tau_y, tau_z = bend_twist_internal_couple + shear_stretch_internal_couple - torque_spring_damping_coefficient * relative_omega
 
         total_force_local = np.array([f_x, f_y, f_z, tau_x, tau_y, tau_z])
-        if 0 == 1: 
+        if test_flag != 3: 
             pass 
             print("robot_index", test_flag)
             print("spring_anchor_point",  spring_anchor_point)
@@ -282,7 +282,7 @@ class ConnectedRigidRobots3D:
             #print("Spring_anchor_point_global_relative", relative_spring_anchor_point_global)
             print("total_force", total_force_local)
             print("shear_induced_couple", shear_stretch_internal_couple)
-        #print("\n")
+        print("\n")
 
         return total_force_local
 

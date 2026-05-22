@@ -57,7 +57,7 @@ if __name__ == "__main__":
     )
     robot_collection = [robot_disk_1, robot_disk_2]
 
-    k_s = np.array([50.0,50.0,1.0])
+    k_s = np.array([1.0,1.0,1.0])
     k_t = np.array([0.001,0.001,0.001])
 
     slender_robot = ConnectedRigidRobots3D(robots=robot_collection)
@@ -65,7 +65,7 @@ if __name__ == "__main__":
     slender_robot.add_connection((0, 1), to_base=False, spring_stiffness= k_s, torque_spring_stiffness=k_t)
 
     simulator_slender = MutiRobotSimulator3D(
-        time_step=0.001,
+        time_step=0.01,
         duration=10,
         stepper='explicit_euler',
         control_logic=None,

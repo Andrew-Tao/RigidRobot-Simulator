@@ -77,7 +77,7 @@ def generate_series_connection_map(
 
 if __name__ == "__main__":
 
-    n_elements = 2
+    n_elements = 25
     density = 1000  # kg/m^3
     total_length = 1.0 # meters
     disk_radius = 0.01 # meters
@@ -103,15 +103,18 @@ if __name__ == "__main__":
     damping_spring = np.array([1.0, 1.0, 1.0])   
     damping_tortional_spring = np.array([2e-3, 2e-3, 2e-3])
 
-    # Spirob_parameters
-    n_elements = 7
-    segment_length = 0.04
+    print("k_spring",k_spring)
+    print("k_tortional_spring",k_tortional_spring)
+    print("segment_mass", segment_mass)
+    print("moment_inertia", moment_inertia)
 
+    # Spirob_parameters
+    n_elements = 25
+    segment_length = 0.04
     k_spring = np.array([1.0,1.0,1.0])
     k_tortional_spring = np.array([0.01, 0.01, 0.01])
-
     damping_spring = np.array([1.0, 1.0, 1.0])   
-    damping_tortional_spring = np.array([2e-3, 2e-3, 2e-3])
+    damping_tortional_spring = np.array([1e-3, 1e-3, 1e-3])
     segment_mass = 0.0855
     disk_radius = 0.03
     moment_inertia = np.array([2.37e-5, 2.37e-5, 3.84e-5])
@@ -169,7 +172,7 @@ if __name__ == "__main__":
     force_collection = np.array(simulator_beam.force_collection)
     internal_force_collection = np.array(simulator_beam.internal_force_collection)
     #print("force_colleciton", force_collection)
-    print(force_collection)
+    #print(force_collection)
 
     N_disks = posture_collection.shape[1]
 

@@ -46,21 +46,23 @@ def generate_series_robot_disks(
 
 def generate_series_connection_map(
     cantilever_beam,
-    k_spring, 
-    damping_spring, 
-    k_tortional_spring, 
-    damping_tortional_spring):
+    k_spring,
+    damping_spring,
+    k_tortional_spring,
+    damping_tortional_spring,
+    spring_original_length):
 
     cantilever_beam.add_connection(
             (0, 1),
-            to_base = True, 
+            to_base = True,
             spring_stiffness = k_spring,
             spring_damping_coefficient = damping_spring,
             torque_spring_stiffness = k_tortional_spring,
             torque_spring_damping_coefficient = damping_tortional_spring,
+            spring_original_length = spring_original_length,
         )
 
-    for i in range(1,len(cantilever_beam.robots) - 1):
+    for i in range(len(cantilever_beam.robots)-1):
         cantilever_beam.add_connection(
             (i, i + 1),
             to_base = False,
@@ -68,13 +70,14 @@ def generate_series_connection_map(
             spring_damping_coefficient = damping_spring,
             torque_spring_stiffness = k_tortional_spring,
             torque_spring_damping_coefficient = damping_tortional_spring,
+            spring_original_length = spring_original_length,
         )
     return 0
 
 
 if __name__ == "__main__":
 
-    n_elements = 25
+    n_elements = 2
     density = 1000  # kg/m^3
     total_length = 1.0 # meters
     disk_radius = 0.01 # meters
@@ -89,11 +92,11 @@ if __name__ == "__main__":
     I_z = np.pi * disk_radius**4 / 2
     k_spring = np.array([G_module * cross_section_area, 
                          G_module * cross_section_area,
-                         E_module * cross_section_area])
+                         E_module * cross_section_area]) / segment_length
 
     k_tortional_spring = np.array([
-        E_module * I_x, E_module * I_y, E_module * I_z
-    ])
+        E_module * I_x, E_module * I_y, G_module * I_z
+    ]) / segment_length
 
     moment_inertia = np.array([I_x, I_y, I_z])* segment_mass / cross_section_area
 
@@ -123,29 +126,24 @@ if __name__ == "__main__":
         damping_spring,
         k_tortional_spring,
         damping_tortional_spring,
+        spring_original_length = segment_length,
     )
 
     simulator_beam = MutiRobotSimulator3D(
-        time_step=0.1, 
-        duration=20, 
-        stepper = 'explicit_euler', 
+        time_step=1e-4,
+        duration=20,
+        stepper = 'explicit_euler',
         control_logic = None)
 
     simulator_beam.attach(cantilever_beam)
 
 
-    for i in range(25):
-        simulator_beam.connected_robot.robots[i].control_input = np.array([0.0,1.0,0.0,0.000,0.0,0.0])
+    for i in range(n_elements):
+        simulator_beam.connected_robot.robots[i].control_input = np.array([0.0,0.0,0.0,0.0,0.0,0.0])
   
    
 
     while simulator_beam.run():
-
-        if simulator_beam.current_time >= 20:
-            for i in range(7): 
-                simulator_beam.connected_robot.robots[i].control_input = np.zeros(6)
-
-
         simulator_beam.multi_robots_step()
         simulator_beam.multi_robot_record()
 
@@ -159,6 +157,7 @@ if __name__ == "__main__":
     force_collection = np.array(simulator_beam.force_collection)
     internal_force_collection = np.array(simulator_beam.internal_force_collection)
     #print("force_colleciton", force_collection)
+    print(force_collection)
 
     N_disks = posture_collection.shape[1]
 
@@ -223,7 +222,6 @@ if __name__ == "__main__":
         time_collection   = time_collection,
         posture_collection= posture_collection,
         force_collection  = force_collection,
-
         disk_radius       = disk_radius,
         output_path       = 'slender_robot_simulation.mp4',  # falls back to .gif if ffmpeg missing
         fps               = 20,

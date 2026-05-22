@@ -282,7 +282,7 @@ class ConnectedRigidRobots3D:
             #print("Spring_anchor_point_global_relative", relative_spring_anchor_point_global)
             print("total_force", total_force_local)
             print("shear_induced_couple", shear_stretch_internal_couple)
-        print("\n")
+        #print("\n")
 
         return total_force_local
 

@@ -235,10 +235,10 @@ class MutiRobotSimulator3D():
         force_frame = np.array(force_frame)
         internal_force_frame = np.array(internal_force_frame)
         momentum_frame = np.array(momentum_frame)
+  
         orientation_frame = np.array(orientation_frame)
 
 
-        self.time_collection.append(self.current_time)
         self.posture_collection.append(posture_frame)
         self.velocity_matrix_collection.append(velocity_matrix_frame)
         self.force_collection.append(force_frame)

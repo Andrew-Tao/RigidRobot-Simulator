@@ -134,7 +134,7 @@ if __name__ == "__main__":
     k_s = np.array([1.0,1.0,1.0])
     k_t = np.array([0.01,0.01,0.01])
     spring_damp = np.array([1.0, 1.0, 1.0])
-    tor_spring_damp = np.array([2e-3, 2e-3, 2e-3])
+    tor_spring_damp = np.array([1e-3, 1e-3, 1e-3])
 
 
 
@@ -172,10 +172,9 @@ if __name__ == "__main__":
     simulator_slender.add_external_force(cable_driven_force)
     #simulator_slender.add_external_force(gravity_force)
 
-    for i in range(6):
+    for i in range(7):
         simulator_slender.connected_robot.robots[i].control_input = np.array([0.0,0.005,0.0,0.000,0.0,0.0])
-    for i in range(6,7):
-        simulator_slender.connected_robot.robots[i].control_input = np.array([0.0,0.005,0.0,0.00,0.0,0.0])
+
     #simulator_slender.connected_robot.robots[6].control_input = np.array([0.0,0.001,0.0,0.0,0.0,0.0])
    
 

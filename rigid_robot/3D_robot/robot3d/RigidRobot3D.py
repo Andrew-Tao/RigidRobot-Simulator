@@ -335,7 +335,7 @@ class ConnectedRigidRobots3D:
         spring_anchor_point_local_1=np.array([0.0, 0.0, 0.0]), # spring_anchor_point at the robot's local frame. Offset to center of robot1
         spring_anchor_point_local_2 = np.array([0.0,0.0,0.0]),  # spring_anchor_point at the robot's local frame. Offset to center of robot2
         spring_stiffness=np.array([1.0,1.0,1.0]),
-        torque_spring_anchor_orientation=np.diag([1.0, 1.0, 1.0]),
+        torque_spring_anchor_orientation=np.zeros(3),
         torque_spring_stiffness=np.array([1.0,1.0,1.0]),
         spring_original_length=0.04,
         spring_damping_coefficient = np.array([1.0,1.0,1.0]),

@@ -250,7 +250,7 @@ class ConnectedRigidRobots3D:
         relative_spring_anchor_point_global = (spring_anchor_point - position)
         original_front_direction_vector = spring_original_length * orientation_Q[:3,2] 
         if is_upon_anchor_disk: original_front_direction_vector = - original_front_direction_vector 
-        strain_local = np.linalg.inv(orientation_Q) @ (relative_spring_anchor_point_global - original_front_direction_vector) # strain_L = Q.T (et - d3)
+        strain_local = orientation_Q.T @ (relative_spring_anchor_point_global - original_front_direction_vector) # strain_L = Q.T (et - d3)
 
          # Damping uses relative velocity: v_self_world - v_anchor_world, expressed in body frame
         relative_velocity_body = v_body - orientation_Q.T @ anchor_velocity_world

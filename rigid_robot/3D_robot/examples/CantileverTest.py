@@ -103,8 +103,20 @@ if __name__ == "__main__":
     damping_spring = np.array([1.0, 1.0, 1.0])   
     damping_tortional_spring = np.array([2e-3, 2e-3, 2e-3])
 
-    
+    # Spirob_parameters
+    n_elements = 7
+    segment_length = 0.04
 
+    k_spring = np.array([1.0,1.0,1.0])
+    k_tortional_spring = np.array([0.01, 0.01, 0.01])
+
+    damping_spring = np.array([1.0, 1.0, 1.0])   
+    damping_tortional_spring = np.array([2e-3, 2e-3, 2e-3])
+    segment_mass = 0.0855
+    disk_radius = 0.03
+    moment_inertia = np.array([2.37e-5, 2.37e-5, 3.84e-5])
+
+    
     robot_collection = generate_series_robot_disks(
         n_disks = n_elements,
         length_between_disks = segment_length,
@@ -130,7 +142,7 @@ if __name__ == "__main__":
     )
 
     simulator_beam = MutiRobotSimulator3D(
-        time_step=1e-3,
+        time_step=0.01,
         duration=20,
         stepper = 'explicit_euler',
         control_logic = None)
@@ -139,7 +151,7 @@ if __name__ == "__main__":
 
 
     for i in range(n_elements):
-        simulator_beam.connected_robot.robots[i].control_input = np.array([0.0,0.0,0.000001,0.0,0.0,0.0])
+        simulator_beam.connected_robot.robots[i].control_input = np.array([0.0,0.005,0.0,0.0,0.0,0.0])
   
    
 

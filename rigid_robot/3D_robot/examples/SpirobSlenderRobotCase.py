@@ -140,7 +140,7 @@ if __name__ == "__main__":
 
     slender_robot.add_connection((0,1), to_base= True, spring_stiffness= k_s, torque_spring_stiffness= k_t, spring_damping_coefficient= spring_damp, torque_spring_damping_coefficient= tor_spring_damp)
     for i in range(6):
-        slender_robot.add_connection((i,i+1), to_base= False, spring_stiffness= k_s, torque_spring_stiffness= k_t, spring_damping_coefficient=spring_damp, torque_spring_anchor_orientation=tor_spring_damp)
+        slender_robot.add_connection((i,i+1), to_base= False, spring_stiffness= k_s, torque_spring_stiffness= k_t, spring_damping_coefficient=spring_damp, torque_spring_damping_coefficient=tor_spring_damp)
    
 
     # Add external force - CableDrivenForce

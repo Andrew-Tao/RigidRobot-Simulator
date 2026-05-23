@@ -210,7 +210,14 @@ class ConnectedRigidRobots3D:
                 torque_spring_damping_coefficient= torque_spring_damping_coefficient
             )
 
-            if not is_upon_sequence_flag: half_cross_section_force = - half_cross_section_force
+            if not is_upon_sequence_flag:
+                R_transform = self.robots[robot_index].posture[:3, :3].T @ who_i_am_robot.posture[:3, :3]
+                half_cross_section_force = np.concatenate([
+                    -R_transform @ half_cross_section_force[:3],
+                    -R_transform @ half_cross_section_force[3:]
+                ])
+
+            print("half_section_force", half_cross_section_force)
 
             total_force += half_cross_section_force
 
@@ -274,7 +281,7 @@ class ConnectedRigidRobots3D:
         tau_x, tau_y, tau_z = bend_twist_internal_couple + shear_stretch_internal_couple - torque_spring_damping_coefficient * relative_omega
 
         total_force_local = np.array([f_x, f_y, f_z, tau_x, tau_y, tau_z])
-        if 0 == 3: 
+        if test_flag != 9: 
             pass 
             print("robot_index", test_flag)
             print("spring_anchor_point",  spring_anchor_point)
@@ -291,46 +298,6 @@ class ConnectedRigidRobots3D:
         return total_force_local
 
 
-    def compute_internal_force(self, robot_index: int):
-        """Spring/damping forces only — excludes control_input and external_force."""
-        connection = self.connection_map[robot_index]
-        total_force = np.zeros(6)
-        for i in range(len(connection)):
-            if not connection[i].to_base:
-                anchor_robot = self.robots[connection[i].to]
-                spring_anchor_point = anchor_robot.posture[:3, 3]
-                torque_spring_anchor_orientation = anchor_robot.orientation
-                anchor_Q = anchor_robot.posture[:3, :3]
-                anchor_velocity_world = anchor_Q @ anchor_robot.velocity_matrix[:3, 3]
-                aw_x = anchor_robot.velocity_matrix[2, 1]
-                aw_y = anchor_robot.velocity_matrix[0, 2]
-                aw_z = anchor_robot.velocity_matrix[1, 0]
-                anchor_angular_velocity_world = anchor_Q @ np.array([aw_x, aw_y, aw_z])
-                is_upon_sequence_flag = connection[i].to > robot_index
-            else:
-                spring_anchor_point = np.zeros(3)
-                torque_spring_anchor_orientation = np.zeros(3)
-                anchor_velocity_world = np.zeros(3)
-                anchor_angular_velocity_world = np.zeros(3)
-                is_upon_sequence_flag = False
-
-            total_force += self.compute_single_spring_force(
-                robot=self.robots[robot_index],
-                is_upon_anchor_disk=is_upon_sequence_flag,
-                spring_anchor_point=spring_anchor_point,
-                torque_spring_anchor_orientation=torque_spring_anchor_orientation,
-                spring_stiffness=connection[i].spring_stiffness,
-                torque_spring_stiffness=connection[i].torque_spring_stiffness,
-                spring_original_length=connection[i].spring_original_length,
-                anchor_velocity_world=anchor_velocity_world,
-                anchor_angular_velocity_world=anchor_angular_velocity_world,
-                test_flag=3,
-                spring_damping_coefficient=connection[i].spring_damping_coefficient,
-                torque_spring_damping_coefficient=connection[i].torque_spring_damping_coefficient,
-            )
-        return total_force
-
-   
 
     def add_connection(self,
         index_pairs:tuple, # If to_base is true, the second elment is ignored

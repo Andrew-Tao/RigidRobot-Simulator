@@ -131,10 +131,10 @@ if __name__ == "__main__":
     )
 
     # Add connection map for the robot
-    k_s = np.array([1.0,1.0,10.0])
+    k_s = np.array([1.0,10.0,10.0])
     k_t = np.array([0.02,0.02,0.01])
     spring_damp = np.array([8e-1, 8e-1, 8e-1])
-    tor_spring_damp = np.array([1e-3, 1e-3, 1e-3])
+    tor_spring_damp = np.array([5e-4, 5e-4, 1e-3])
 
 
 
@@ -172,8 +172,9 @@ if __name__ == "__main__":
     simulator_slender.add_external_force(cable_driven_force)
     #simulator_slender.add_external_force(gravity_force)
 
+
     for i in range(7):
-        simulator_slender.connected_robot.robots[i].control_input = np.array([0.0,0.004,0.0,0.000,0.0,0.0])
+        simulator_slender.connected_robot.robots[i].control_input = np.array([0.0,0.006,0.0,0.000,0.0,0.0])
 
     #simulator_slender.connected_robot.robots[6].control_input = np.array([0.0,0.001,0.0,0.0,0.0,0.0])
    
@@ -192,7 +193,6 @@ if __name__ == "__main__":
     posture_collection = np.array(simulator_slender.posture_collection)
     orientation_collection = np.array(simulator_slender.orientation_collection)
     force_collection = np.array(simulator_slender.force_collection)
-    internal_force_collection = np.array(simulator_slender.internal_force_collection)
     #print("force_colleciton", force_collection)
 
     N_disks = posture_collection.shape[1]
@@ -243,7 +243,7 @@ if __name__ == "__main__":
         for i in range(N_disks):
             label = f"disk {i + 1}" if (show_all_labels or i in label_set) else None
             color = cmap(i / max(N_disks - 1, 1))
-            ax.plot(time_collection, internal_force_collection[:, i, idx], color=color, label=label)
+            ax.plot(time_collection, force_collection[:, i, idx], color=color, label=label)
         ax.set_xlabel("Time (s)")
         ax.set_ylabel(force_labels[idx])
         ax.set_title(force_titles[idx])

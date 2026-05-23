@@ -219,13 +219,12 @@ class MutiRobotSimulator3D():
         momentum_frame = []
         orientation_frame = []
 
-        internal_force_frame = []
+       
         for i in range(len(self.connected_robot.robots)):
 
             posture_frame.append(self.connected_robot.robots[i].posture.copy())
             velocity_matrix_frame.append(self.connected_robot.robots[i].velocity_matrix.copy())
             force_frame.append(self.connected_robot.compute_force_local_total_individual_robot(robot_index=i, external_force=np.zeros(6)).copy())
-            internal_force_frame.append(self.connected_robot.compute_internal_force(robot_index=i).copy())
             momentum_frame.append(self.connected_robot.robots[i].momentum.copy())
             orientation_frame.append(self.connected_robot.robots[i].orientation.copy())
 
@@ -233,7 +232,6 @@ class MutiRobotSimulator3D():
         posture_frame = np.array(posture_frame)
         velocity_matrix_frame = np.array(velocity_matrix_frame)
         force_frame = np.array(force_frame)
-        internal_force_frame = np.array(internal_force_frame)
         momentum_frame = np.array(momentum_frame)
   
         orientation_frame = np.array(orientation_frame)
@@ -242,7 +240,6 @@ class MutiRobotSimulator3D():
         self.posture_collection.append(posture_frame)
         self.velocity_matrix_collection.append(velocity_matrix_frame)
         self.force_collection.append(force_frame)
-        self.internal_force_collection.append(internal_force_frame)
         self.momentum_collection.append(momentum_frame)
         self.orientation_collection.append(orientation_frame)
         if self._pbar is not None:

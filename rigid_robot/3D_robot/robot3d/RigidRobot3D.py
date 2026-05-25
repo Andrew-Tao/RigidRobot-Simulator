@@ -217,7 +217,7 @@ class ConnectedRigidRobots3D:
                     -R_transform @ half_cross_section_force[3:]
                 ])
 
-            print("half_section_force", half_cross_section_force)
+            #print("half_section_force", half_cross_section_force)
 
             total_force += half_cross_section_force
 
@@ -281,7 +281,7 @@ class ConnectedRigidRobots3D:
         tau_x, tau_y, tau_z = bend_twist_internal_couple + shear_stretch_internal_couple - torque_spring_damping_coefficient * relative_omega
 
         total_force_local = np.array([f_x, f_y, f_z, tau_x, tau_y, tau_z])
-        if test_flag != 9: 
+        if True == False: 
             pass 
             print("robot_index", test_flag)
             print("spring_anchor_point",  spring_anchor_point)

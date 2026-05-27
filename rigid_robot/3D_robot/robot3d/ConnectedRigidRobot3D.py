@@ -104,13 +104,6 @@ class ConnectedRigidRobots3D:
 
         total_force += self.robots[robot_index].control_input
         
-        """
-        if robot_index == 1:
-            from tqdm import tqdm
-            print(f"external_force {external_force}")
-            print(f"control_input {self.robots[robot_index].control_input}")
-            print(f"total_force {total_force}")
-        """
         return total_force
 
     def compute_single_spring_force(
@@ -163,14 +156,16 @@ class ConnectedRigidRobots3D:
             pass 
 
             print("robot_index", test_flag,"\n")
-            print("orientation_Q", orientation_Q)
+            #print("orientation_Q", orientation_Q)
             #print("spring_anchor_point",  spring_anchor_point)
             #print("is_upon",is_upon_anchor_disk)
            
             #print("position",position)
-            print("strain_local",strain_local)
-            print("original_front", original_front_direction_vector )
-            print("linear_spring_force_local", linear_spring_force_local)
+            #D = position - spring_anchor_point
+            #print(f"{D[2]:.20f}")
+            #print("strain_local",strain_local)
+            #print("original_front", original_front_direction_vector )
+            #print("linear_spring_force_local", linear_spring_force_local)
             #print("Spring_anchor_point_global_relative", relative_spring_anchor_point_global)
             #print("total_force", total_force_local)
             #print("shear_induced_couple", shear_stretch_internal_couple)

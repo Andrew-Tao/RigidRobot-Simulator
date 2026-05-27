@@ -31,18 +31,21 @@ def generate_series_robot_disks(
     radius, 
     thickness, ):
     robot_disks = []
+
     for i in range(n_disks):
+        current_position = initial_position - np.array([0.0, 0.0, length_between_disks * (i + 1)])
         robot_disk = RigidRobot3D(
-            position = initial_position + np.array([0.0, 0.0, -(i+1) * length_between_disks]),
-            orientation = initial_orientation,
-            mass = mass,
-            inertia = moment_inertia,
-            linear_velocity = np.zeros(3),
-            angular_velocity = np.zeros(3),
-            radius = radius,
-            thickness = thickness,
+            position=current_position,
+            orientation=initial_orientation,
+            mass=mass,
+            inertia=moment_inertia,
+            linear_velocity=np.zeros(3),
+            angular_velocity=np.zeros(3),
+            radius=radius,
+            thickness=thickness,
         )
         robot_disks.append(robot_disk)
+
     return robot_disks
 
 def generate_series_connection_map(
@@ -150,7 +153,7 @@ if __name__ == "__main__":
 
     simulator_beam = MutiRobotSimulator3D(
         time_step=0.01,
-        duration=20,
+        duration=0.09,
         stepper = 'explicit_euler',
         control_logic = None)
 
@@ -160,9 +163,8 @@ if __name__ == "__main__":
     #simulator_beam.add_external_force(gravity)
 
 
-
     for i in range(n_elements):
-        simulator_beam.connected_robot.robots[i].control_input = np.array([0.0,0.0001,0.0,0.0,0.0,0.0])
+        simulator_beam.connected_robot.robots[i].control_input = np.array([0.0,0.0,0.0,0.0,0.0,0.0])
   
    
 

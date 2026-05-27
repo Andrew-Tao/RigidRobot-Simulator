@@ -9,8 +9,9 @@ where F is the applied force, L is the length of the beam, E is the Young
 
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from robot3d.RigidRobot3D import RigidRobot3D, ConnectedRigidRobots3D
-from robot3d.Simulator3D import Simulator3D, MutiRobotSimulator3D
+from robot3d.ConnectedRigidRobot3D import ConnectedRigidRobots3D
+from robot3d.RigidRobot3D import RigidRobot3D
+from robot3d.SimulatorConnectedRobot3D import MutiRobotSimulator3D
 from robot3d.CableDrivenForce import CableDrivenForce, GravityForce
 import numpy as np
 from robot3d.methods3D import SE3LieAlgebra
@@ -81,7 +82,7 @@ if __name__ == "__main__":
 
 
     # Spirob_parameters
-    n_elements = 100
+    n_elements = 25
     L = 0.35 
     disk_radius = 0.03
     disk_thickness = 0.01
@@ -109,8 +110,8 @@ if __name__ == "__main__":
 
     moment_inertia = np.array([Ixx, Iyy, Izz])
 
-    E_module = 5 * 1e6 #Pa
-    G_module = 6 * 1e6 #Pa
+    E_module = 5 * 1e6  #Pa
+    G_module = 6 * 1e6 *2 #Pa
 
     k_s = np.array([alpha_c * G_module,alpha_c * G_module, E_module]) * area_spine /10
     k_t = np.array([E_module * Ix , E_module*Ix, G_module * Ixy]) 
@@ -149,7 +150,7 @@ if __name__ == "__main__":
 
     simulator_beam = MutiRobotSimulator3D(
         time_step=0.01,
-        duration=10,
+        duration=20,
         stepper = 'explicit_euler',
         control_logic = None)
 

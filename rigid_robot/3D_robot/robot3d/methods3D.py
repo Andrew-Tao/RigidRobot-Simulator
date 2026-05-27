@@ -266,4 +266,4 @@ def rotation_matrix_to_euler_zyx(Q):
     roll  = np.arctan2(q32, q33)
     yaw   = np.arctan2(q21, q11)
 
-    return roll, pitch, yaw
+    return np.array([roll, pitch, yaw])

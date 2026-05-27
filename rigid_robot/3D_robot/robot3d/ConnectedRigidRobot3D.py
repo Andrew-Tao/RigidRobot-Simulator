@@ -30,11 +30,10 @@ class ConnectedRigidRobots3D:
     def __init__(self, robots:list[RigidRobot3D]):
         self.robots = robots
         self.connection_map = {i: list() for i in range(len(self.robots))}
-        #TODO: this is now just a place holder for empty external force
-        self.external_force = np.zeros(6)
+        
 
         self.force = np.zeros((len(robots), 6)) # Collection of the force for each individual robot #TODO: Use this
-        self.base_robot = self.generate_base_robot() # This is an imagine robot which represent the fixed origin point
+        self.base_robot = self.generate_base_robot(first_robot = robots[0]) # This is an imagine robot which represent the fixed origin point
 
     def compute_force_local_total_individual_robot(self,robot_index:int):
         connection = self.connection_map[robot_index]
@@ -141,7 +140,7 @@ class ConnectedRigidRobots3D:
 
         #---------------------------------Elongation & Shear -------------------------------------
         relative_spring_anchor_point_global = (spring_anchor_point - position)
-        original_front_direction_vector = - spring_original_length * orientation_Q[:3,2] 
+        original_front_direction_vector =  spring_original_length * orientation_Q[:3,2] 
         strain_local = orientation_Q.T @ (relative_spring_anchor_point_global - original_front_direction_vector) # strain_L = Q.T (et - d3)
 
          # Damping uses relative velocity: v_self_world - v_anchor_world, expressed in body frame
@@ -154,26 +153,27 @@ class ConnectedRigidRobots3D:
         theta = robot.orientation.copy() - torque_spring_anchor_orientation
         relative_omega = omega - orientation_Q.T @ anchor_angular_velocity_world
         bend_twist_internal_couple = - torque_spring_stiffness * theta
-        #TODO: Is this correct ???????
-        front_direction_unit_vector = - np.array([0.0, 0.0, 1.0])
-        
+        front_direction_unit_vector =  np.array([0.0, 0.0, 1.0])
         shear_stretch_internal_couple =  spring_original_length * np.cross(front_direction_unit_vector, linear_spring_force_local)
         if not is_upon_anchor_disk: shear_stretch_internal_couple = np.zeros(3)
         tau_x, tau_y, tau_z = bend_twist_internal_couple + shear_stretch_internal_couple - torque_spring_damping_coefficient * relative_omega
 
         total_force_local = np.array([f_x, f_y, f_z, tau_x, tau_y, tau_z])
-        if True == False: 
+        if test_flag == 1000: 
             pass 
-            print("robot_index", test_flag)
-            print("spring_anchor_point",  spring_anchor_point)
-            print("is_upon",is_upon_anchor_disk)
+
+            print("robot_index", test_flag,"\n")
+            print("orientation_Q", orientation_Q)
+            #print("spring_anchor_point",  spring_anchor_point)
+            #print("is_upon",is_upon_anchor_disk)
            
             #print("position",position)
             print("strain_local",strain_local)
-            #print("original_front", original_front_direction_vector )
+            print("original_front", original_front_direction_vector )
+            print("linear_spring_force_local", linear_spring_force_local)
             #print("Spring_anchor_point_global_relative", relative_spring_anchor_point_global)
-            print("total_force", total_force_local)
-            print("shear_induced_couple", shear_stretch_internal_couple)
+            #print("total_force", total_force_local)
+            #print("shear_induced_couple", shear_stretch_internal_couple)
         #print("\n")
 
         return total_force_local
@@ -224,10 +224,10 @@ class ConnectedRigidRobots3D:
                 torque_spring_damping_coefficient = torque_spring_damping_coefficient
             ))
 
-    def generate_base_robot(self):
+    def generate_base_robot(self,first_robot):
         base_robot = RigidRobot3D(
             position = np.zeros(3), 
-            orientation = np.zeros(3), 
+            orientation = first_robot.posture[:3, :3], # we set it to be the same as the first robot just for consistency
             mass = 0.0, # This doesn't matter as it won't be used
             inertia = np.zeros(3), # This doesn't matter as it won't be used
             linear_velocity=np.zeros(3), 

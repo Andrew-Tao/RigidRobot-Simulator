@@ -1,4 +1,4 @@
-from .methods3D import SE3LieAlgebra, rpy_to_Q
+from .methods3D import SE3LieAlgebra, rpy_to_Q, rotation_matrix_to_euler_zyx
 import numpy as np
 import matplotlib.pyplot as plt
 lie3 = SE3LieAlgebra()
@@ -32,7 +32,8 @@ class RigidRobot3D:
         """
 
         self.radius = radius
-        self.orientation = orientation
+        self.orientation = rotation_matrix_to_euler_zyx(orientation) #NOTE: This is only relative orientation. The posture matrix will be used to track the absolute orientation. There can be missmatch between because of chirality. But the code can still run correctly because only difference of theta is calculated (relative)
+        
         # Since the posture matrix can no longer correctly track the constitution relationship
         # after the robot rotate 360 degrees. So wee need a true omega tracking twist over time
         self.thickness = thickness
@@ -46,7 +47,7 @@ class RigidRobot3D:
         self.friction_coefficient = 0.6  # Simple friction model
 
     def compute_posture(self, position, orientation):
-        Q = rpy_to_Q(orientation)
+        Q = orientation
         T = np.eye(4)
         T[:3, :3] = Q
         T[:3, 3] = position

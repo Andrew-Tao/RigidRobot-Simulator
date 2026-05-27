@@ -128,7 +128,7 @@ if __name__ == "__main__":
         n_disks = n_elements,
         length_between_disks = segment_length,
         initial_position = np.array([0.0, 0.0, 0.0]),
-        initial_orientation = np.array([0.0, 0.0, 0.0]),
+        initial_orientation = np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, -1.0]]),
         mass = disk_mass,
         moment_inertia = moment_inertia,
         radius = disk_radius,

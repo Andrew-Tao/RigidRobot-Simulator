@@ -95,11 +95,13 @@ class SE3LieAlgebra:
     def exp_SO3(self, W: np.ndarray) -> np.ndarray:
         """Exponential map for SO(3) rotation matrix."""
         theta = np.sqrt(W[2, 1]**2 + W[0, 2]**2 + W[1, 0]**2)
+        
         if theta < self._EPS:
             return np.eye(3) + W
         else:
             W2   = W @ W
             s, c = np.sin(theta), np.cos(theta)
+            #print(f"theta in exp_SO3: {theta}")
             R    = np.eye(3) + (s / theta) * W + ((1 - c) / theta**2) * W2
             return R
 

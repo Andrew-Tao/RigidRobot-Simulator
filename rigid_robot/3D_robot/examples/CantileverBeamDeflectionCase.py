@@ -9,8 +9,9 @@ where F is the applied force, L is the length of the beam, E is the Young
 
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from robot3d.RigidRobot3D import RigidRobot3D, ConnectedRigidRobots3D
-from robot3d.Simulator3D import Simulator3D, MutiRobotSimulator3D
+from robot3d.ConnectedRigidRobot3D import ConnectedRigidRobots3D
+from robot3d.SimulatorConnectedRobot3D import MutiRobotSimulator3D
+from robot3d.RigidRobot3D import RigidRobot3D
 from robot3d.CableDrivenForce import CableDrivenForce, GravityForce
 import numpy as np
 from robot3d.methods3D import SE3LieAlgebra
@@ -77,31 +78,51 @@ def generate_series_connection_map(
 
 if __name__ == "__main__":
 
-    n_elements = 2
-    density = 1000  # kg/m^3
-    total_length = 1.0 # meters
-    disk_radius = 0.01 # meters
-    E_module = 2.0 * 1e9 #Pa
-    G_module = 7.7 * 1e8 #Pa
+    # -------------------- Initialization of the cantilever beam system --------------------
 
-    segment_mass = density * np.pi * disk_radius**2 * (total_length / n_elements)
+    F = 3 # N total load
+    width = 0.01  # m, width of the beam (used for visualization and cross-sectional properties)
+    
+
+    n_elements = 25
+    load = F / n_elements  # Distribute the total load equally among the disks
+    E_module = 1.2 * 1e7 # Pa
+    poisson_ratio = 0 
+    G_module = E_module / (2 * (1 + poisson_ratio)) # Pa
+    total_length = 0.5  # m
+    I_x = 0.01**4 / 12  # m^4, moment of inertia for a circular cross-section
+    I_y = 0.01**4 / 12  # m^4
+    I_z = I_x + I_y  # m^4, polar moment of inertia for a circular cross-section
+
+
+
+    density = 1000  # kg/m^3
+    total_volume = 0.01 **2 * total_length  # m^3, volume of the beam
+    total_mass = density * total_volume  # kg
+
+
+    segment_mass = total_mass / n_elements
     segment_length = total_length / n_elements
-    cross_section_area = np.pi * disk_radius**2
-    I_x = np.pi * disk_radius**4 / 4
-    I_y = np.pi * disk_radius**4 / 4
-    I_z = np.pi * disk_radius**4 / 2
+    cross_section_area = 0.01 **2  # m^2, cross-sectional area of the beam
+
+
     k_spring = np.array([G_module * cross_section_area, 
                          G_module * cross_section_area,
-                         E_module * cross_section_area]) / segment_length
+                         E_module * cross_section_area])
 
     k_tortional_spring = np.array([
         E_module * I_x, E_module * I_y, G_module * I_z
-    ]) / segment_length
+    ]) 
 
-    moment_inertia = np.array([I_x, I_y, I_z])* segment_mass / cross_section_area
+    I_h = (1/12) * segment_mass * ((0.01)**2 + (0.01)**2)
+    I_w = (1/12) * segment_mass * ((0.01)**2 + segment_length**2)
+    I_d = (1/12) * segment_mass * ((0.01)**2 + segment_length**2)
 
-    damping_spring = np.array([1.0, 1.0, 1.0])   
-    damping_tortional_spring = np.array([2e-3, 2e-3, 2e-3])
+
+    moment_inertia = np.array([I_w, I_d, I_h]) 
+
+    damping_spring = np.array([1.0, 1.0, 1.0])   * 0.0
+    damping_tortional_spring = np.array([2e-3, 2e-3, 2e-3]) * 0.0
 
     
 
@@ -109,10 +130,12 @@ if __name__ == "__main__":
         n_disks = n_elements,
         length_between_disks = segment_length,
         initial_position = np.array([0.0, 0.0, 0.0]),
-        initial_orientation = np.array([0.0, 0.0, 0.0]),
+        initial_orientation = np.array([[1.0, 0.0, 0.0],
+                                        [0.0, 1.0, 0.0],
+                                        [0.0, 0.0, -1.0]]),
         mass = segment_mass,
         moment_inertia = moment_inertia,
-        radius = disk_radius,
+        radius = width,
         thickness = 0.025,
         )
 
@@ -130,8 +153,8 @@ if __name__ == "__main__":
     )
 
     simulator_beam = MutiRobotSimulator3D(
-        time_step=1e-3,
-        duration=20,
+        time_step=0.00001,
+        duration=0.5,
         stepper = 'explicit_euler',
         control_logic = None)
 
@@ -139,7 +162,7 @@ if __name__ == "__main__":
 
 
     for i in range(n_elements):
-        simulator_beam.connected_robot.robots[i].control_input = np.array([0.0,0.0,0.000001,0.0,0.0,0.0])
+        simulator_beam.connected_robot.robots[i].control_input = np.array([0.0,load,0.0,0.0,0.0,0.0])
   
    
 
@@ -155,9 +178,9 @@ if __name__ == "__main__":
     posture_collection = np.array(simulator_beam.posture_collection)
     orientation_collection = np.array(simulator_beam.orientation_collection)
     force_collection = np.array(simulator_beam.force_collection)
-    internal_force_collection = np.array(simulator_beam.internal_force_collection)
+
     #print("force_colleciton", force_collection)
-    print(force_collection)
+    #print(force_collection)
 
     N_disks = posture_collection.shape[1]
 
@@ -207,7 +230,7 @@ if __name__ == "__main__":
         for i in range(N_disks):
             label = f"disk {i + 1}" if (show_all_labels or i in label_set) else None
             color = cmap(i / max(N_disks - 1, 1))
-            ax.plot(time_collection, internal_force_collection[:, i, idx], color=color, label=label)
+            ax.plot(time_collection, force_collection[:, i, idx], color=color, label=label)
         ax.set_xlabel("Time (s)")
         ax.set_ylabel(force_labels[idx])
         ax.set_title(force_titles[idx])
@@ -222,7 +245,7 @@ if __name__ == "__main__":
         time_collection   = time_collection,
         posture_collection= posture_collection,
         force_collection  = force_collection,
-        disk_radius       = disk_radius,
+        disk_radius       = width/2,
         output_path       = 'slender_robot_simulation.mp4',  # falls back to .gif if ffmpeg missing
         fps               = 20,
         force_scale       = 0.5,

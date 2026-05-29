@@ -132,8 +132,8 @@ class ConnectedRigidRobots3D:
         omega = np.array([omega_x, omega_y, omega_z])
 
         #---------------------------------Elongation & Shear -------------------------------------
-        relative_spring_anchor_point_global = (spring_anchor_point - position)
-        original_front_direction_vector =  spring_original_length * orientation_Q[:3,2] 
+        relative_spring_anchor_point_global = (spring_anchor_point - position) / spring_original_length 
+        original_front_direction_vector =  orientation_Q[:3,2] 
         strain_local = orientation_Q.T @ (relative_spring_anchor_point_global - original_front_direction_vector) # strain_L = Q.T (et - d3)
 
          # Damping uses relative velocity: v_self_world - v_anchor_world, expressed in body frame

@@ -81,9 +81,6 @@ def generate_series_connection_map(
 
 if __name__ == "__main__":
 
-    # BUG: Non-zero starting y_force
-
-
     # Spirob_parameters
     n_elements = 25
     L = 0.35 
@@ -114,9 +111,9 @@ if __name__ == "__main__":
     moment_inertia = np.array([Ixx, Iyy, Izz])
 
     E_module = 5 * 1e6  #Pa
-    G_module = 6 * 1e6 *2 #Pa
+    G_module = 6 * 1e6  #Pa
 
-    k_s = np.array([alpha_c * G_module,alpha_c * G_module, E_module]) * area_spine /10
+    k_s = np.array([alpha_c * G_module,alpha_c * G_module, E_module]) * area_spine 
     k_t = np.array([E_module * Ix , E_module*Ix, G_module * Ixy]) 
 
     spring_damp = np.array([1.5, 1.5, 1.6])
@@ -164,7 +161,7 @@ if __name__ == "__main__":
 
 
     for i in range(n_elements):
-        simulator_beam.connected_robot.robots[i].control_input = np.array([0.0,0.0,0.0,0.0,0.0,0.0])
+        simulator_beam.connected_robot.robots[i].control_input = np.array([0.0,0.0001,0.0,0.0,0.0,0.0])
   
    
 

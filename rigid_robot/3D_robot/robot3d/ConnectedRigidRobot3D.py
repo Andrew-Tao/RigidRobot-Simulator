@@ -132,7 +132,7 @@ class ConnectedRigidRobots3D:
         omega = np.array([omega_x, omega_y, omega_z])
 
         #---------------------------------Elongation & Shear -------------------------------------
-        relative_spring_anchor_point_global = (spring_anchor_point - position) / spring_original_length 
+        relative_spring_anchor_point_global = (spring_anchor_point - position) / spring_original_length
         original_front_direction_vector =  orientation_Q[:3,2] 
         strain_local = orientation_Q.T @ (relative_spring_anchor_point_global - original_front_direction_vector) # strain_L = Q.T (et - d3)
 
@@ -145,7 +145,7 @@ class ConnectedRigidRobots3D:
         #---------------------------------Bending & Twisting ------------------------------
         theta = robot.orientation.copy() - torque_spring_anchor_orientation
         relative_omega = omega - orientation_Q.T @ anchor_angular_velocity_world
-        bend_twist_internal_couple = - torque_spring_stiffness * theta
+        bend_twist_internal_couple = - (torque_spring_stiffness/spring_original_length) * theta
         front_direction_unit_vector =  np.array([0.0, 0.0, 1.0])
         shear_stretch_internal_couple =  spring_original_length * np.cross(front_direction_unit_vector, linear_spring_force_local)
         if not is_upon_anchor_disk: shear_stretch_internal_couple = np.zeros(3)
@@ -157,6 +157,11 @@ class ConnectedRigidRobots3D:
 
             print("robot_index", test_flag,"\n")
             #print("orientation_Q", orientation_Q)
+            print("theta", theta)
+            #print("torque_x", tau_x) 
+            print("bend_twist_internal_couple", bend_twist_internal_couple)
+            print({"torque_spring_stiffness": torque_spring_stiffness, "spring_original_length": spring_original_length})
+            
             #print("spring_anchor_point",  spring_anchor_point)
             #print("is_upon",is_upon_anchor_disk)
            

@@ -78,36 +78,43 @@ def generate_series_connection_map(
 
 if __name__ == "__main__":
 
-    # -------------------- Initialization of the cantilever beam system --------------------
+    # -------------------- Initialization of the cantilever beam system --------------
 
-    F = 3 # N total load
-    width = 0.01  # m, width of the beam (used for visualization and cross-sectional properties)
+    F = 0.0002 # N total load
+    persistence_time = 50 # s, time duration for which the load is applied
+    width = 0.01  # m
     
 
-    n_elements = 25
+    n_elements = 10
     load = F / n_elements  # Distribute the total load equally among the disks
-    E_module = 1.2 * 1e7 # Pa
+    E_module = 1.2 * 1e7 / 1e6 # Pa
     poisson_ratio = 0 
     G_module = E_module / (2 * (1 + poisson_ratio)) # Pa
     total_length = 0.5  # m
-    I_x = 0.01**4 / 12  # m^4, moment of inertia for a circular cross-section
-    I_y = 0.01**4 / 12  # m^4
+    I_x = 0.01**4 / 12 # m^4, moment of inertia for a circular cross-section
+    I_y = 0.01**4 / 12 # m^4
     I_z = I_x + I_y  # m^4, polar moment of inertia for a circular cross-section
 
-
-
     density = 1000  # kg/m^3
+    time_step = 0.01  # s
+    duration = 60.0 # s
+
+    damping_spring = np.array([1.0, 1.0, 1.0])   / 1e3
+    damping_tortional_spring = np.array([2e-3, 2e-3, 2e-3]) / 5e2
+
+
+    # ---------------------------------------- End ---------------------------------
+
     total_volume = 0.01 **2 * total_length  # m^3, volume of the beam
     total_mass = density * total_volume  # kg
-
 
     segment_mass = total_mass / n_elements
     segment_length = total_length / n_elements
     cross_section_area = 0.01 **2  # m^2, cross-sectional area of the beam
 
 
-    k_spring = np.array([G_module * cross_section_area, 
-                         G_module * cross_section_area,
+    k_spring = np.array([G_module * (4/3) * cross_section_area, 
+                         G_module * (4/3) * cross_section_area,
                          E_module * cross_section_area])
 
     k_tortional_spring = np.array([
@@ -121,10 +128,7 @@ if __name__ == "__main__":
 
     moment_inertia = np.array([I_w, I_d, I_h]) 
 
-    damping_spring = np.array([1.0, 1.0, 1.0])   * 0.0
-    damping_tortional_spring = np.array([2e-3, 2e-3, 2e-3]) * 0.0
-
-    
+   
 
     robot_collection = generate_series_robot_disks(
         n_disks = n_elements,
@@ -153,8 +157,8 @@ if __name__ == "__main__":
     )
 
     simulator_beam = MutiRobotSimulator3D(
-        time_step=0.00001,
-        duration=0.5,
+        time_step=time_step,
+        duration=duration,
         stepper = 'explicit_euler',
         control_logic = None)
 
@@ -167,6 +171,10 @@ if __name__ == "__main__":
    
 
     while simulator_beam.run():
+
+        if simulator_beam.current_time >= persistence_time:
+            for i in range(n_elements):
+                simulator_beam.connected_robot.robots[i].control_input = np.array([0.0,0.0,0.0,0.0,0.0,0.0])
         simulator_beam.multi_robots_step()
         simulator_beam.multi_robot_record()
 
@@ -244,8 +252,8 @@ if __name__ == "__main__":
     animate_slender_robot(
         time_collection   = time_collection,
         posture_collection= posture_collection,
-        force_collection  = force_collection,
-        disk_radius       = width/2,
+        force_collection  = None,
+        disk_radius       = width * 5,
         output_path       = 'slender_robot_simulation.mp4',  # falls back to .gif if ffmpeg missing
         fps               = 20,
         force_scale       = 0.5,

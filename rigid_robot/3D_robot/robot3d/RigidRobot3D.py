@@ -46,6 +46,7 @@ class RigidRobot3D:
         self.control_input = np.zeros(6)  # Control input (force_l, force_r)
         self.friction_coefficient = 0.6  # Simple friction model
 
+       
     def compute_posture(self, position, orientation):
         Q = orientation
         T = np.eye(4)

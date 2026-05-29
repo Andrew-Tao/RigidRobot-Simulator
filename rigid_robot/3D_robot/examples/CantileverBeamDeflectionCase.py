@@ -80,27 +80,27 @@ if __name__ == "__main__":
 
     # -------------------- Initialization of the cantilever beam system --------------
 
-    F = 0.0002 # N total load
-    persistence_time = 50 # s, time duration for which the load is applied
+    F = 0.0004 # N total load
+    persistence_time = 200 # s, time duration for which the load is applied
     width = 0.01  # m
     
 
-    n_elements = 10
+    n_elements = 20
     load = F / n_elements  # Distribute the total load equally among the disks
-    E_module = 1.2 * 1e7 / 1e6 # Pa
+    E_module = 1.2 * 1e7 / 1e6  # Pa
     poisson_ratio = 0 
     G_module = E_module / (2 * (1 + poisson_ratio)) # Pa
     total_length = 0.5  # m
-    I_x = 0.01**4 / 12 # m^4, moment of inertia for a circular cross-section
-    I_y = 0.01**4 / 12 # m^4
+    I_x = 0.01**4 / 12 * 1000 # m^4, moment of inertia for a circular cross-section
+    I_y = 0.01**4 / 12 * 1000 # m^4
     I_z = I_x + I_y  # m^4, polar moment of inertia for a circular cross-section
 
     density = 1000  # kg/m^3
-    time_step = 0.01  # s
-    duration = 60.0 # s
+    time_step = 0.01 / 10 # s
+    duration = 35.0 # s
 
-    damping_spring = np.array([1.0, 1.0, 1.0])   / 1e3
-    damping_tortional_spring = np.array([2e-3, 2e-3, 2e-3]) / 5e2
+    damping_spring = np.array([1.0, 1.0, 1.0])   / 30
+    damping_tortional_spring = np.array([2e-3, 2e-3, 2e-3]) / 40
 
 
     # ---------------------------------------- End ---------------------------------
@@ -169,7 +169,6 @@ if __name__ == "__main__":
         simulator_beam.connected_robot.robots[i].control_input = np.array([0.0,load,0.0,0.0,0.0,0.0])
   
    
-
     while simulator_beam.run():
 
         if simulator_beam.current_time >= persistence_time:
@@ -186,6 +185,24 @@ if __name__ == "__main__":
     posture_collection = np.array(simulator_beam.posture_collection)
     orientation_collection = np.array(simulator_beam.orientation_collection)
     force_collection = np.array(simulator_beam.force_collection)
+    bending_internal_couple_collection = np.array(simulator_beam.bending_internal_couple_collection)
+    shear_internal_couple_collection = np.array(simulator_beam.shear_internal_couple_collection)
+    tau_x_base_collection = np.array(simulator_beam.tau_x_base_collection)
+    strain_local_collection = np.array(simulator_beam.strain_local_collection)
+
+    
+    plt.plot(time_collection, bending_internal_couple_collection[:,0,0], label="Bending Internal Couple")
+    plt.plot(time_collection, shear_internal_couple_collection[:,0,0], label="Shear Internal Couple")
+    plt.plot(time_collection, tau_x_base_collection[:,0], label="Tau_x Base")
+    plt.plot(time_collection, force_collection[:,0,3], label="Total Tau 0")
+    plt.plot(time_collection, strain_local_collection[:,0,1], label="Total Tau 1")
+    plt.xlabel("Time (s)")
+    plt.ylabel("Internal Couple (N·m)")
+    plt.title("Internal Couples on the First Disk")
+    plt.legend()
+    plt.grid()
+    plt.show()
+    
 
     #print("force_colleciton", force_collection)
     #print(force_collection)
@@ -224,6 +241,7 @@ if __name__ == "__main__":
         ax.grid(True)
 
     plt.tight_layout()
+ 
 
     # --- Forces & Torques (all 6 components) ---
     force_labels = ["fx (N)", "fy (N)", "fz (N)", "tx (N·m)", "ty (N·m)", "tz (N·m)"]

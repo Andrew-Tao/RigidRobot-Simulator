@@ -30,6 +30,14 @@ class ConnectedRigidRobots3D:
     def __init__(self, robots:list[RigidRobot3D]):
         self.robots = robots
         self.connection_map = {i: list() for i in range(len(self.robots))}
+
+        # Added for Debugging
+        self.bending_internal_couple = np.zeros(3)
+        self.shear_internal_couple = np.zeros(3)
+        self.tau_x_base = 0.0
+        self.strain_local = np.zeros(3)
+
+
         
 
         self.force = np.zeros((len(robots), 6)) # Collection of the force for each individual robot #TODO: Use this
@@ -152,15 +160,20 @@ class ConnectedRigidRobots3D:
         tau_x, tau_y, tau_z = bend_twist_internal_couple + shear_stretch_internal_couple - torque_spring_damping_coefficient * relative_omega
 
         total_force_local = np.array([f_x, f_y, f_z, tau_x, tau_y, tau_z])
-        if test_flag == 1000: 
-            pass 
+        if test_flag == 1000 and is_upon_anchor_disk == True: 
+            self.bending_internal_couple = bend_twist_internal_couple
+            self.shear_internal_couple = shear_stretch_internal_couple
+            self.tau_x_base = tau_x
+            self.strain_local = strain_local
 
             print("robot_index", test_flag,"\n")
             #print("orientation_Q", orientation_Q)
             print("theta", theta)
-            #print("torque_x", tau_x) 
+            print("torque_x", tau_x) 
             print("bend_twist_internal_couple", bend_twist_internal_couple)
-            print({"torque_spring_stiffness": torque_spring_stiffness, "spring_original_length": spring_original_length})
+            print("shear_stretch_internal_couple", shear_stretch_internal_couple)
+            print(" torque_spring_damping_coefficient * relative_omega", torque_spring_damping_coefficient * relative_omega)
+            #print({"torque_spring_stiffness": torque_spring_stiffness, "spring_original_length": spring_original_length})
             
             #print("spring_anchor_point",  spring_anchor_point)
             #print("is_upon",is_upon_anchor_disk)

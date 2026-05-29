@@ -40,6 +40,13 @@ class MutiRobotSimulator3D():
         self.momentum_collection = []
         self.orientation_collection = []
 
+        # Add for Debugging
+        self.bending_internal_couple_collection = []
+        self.shear_internal_couple_collection = []
+        self.tau_x_base_collection = []
+        self.strain_local_collection = []
+
+
         self.external_force_list = [] # Collection of External Forces
         self.current_time = 0.0
         self._total_steps = int(duration / time_step)
@@ -129,6 +136,11 @@ class MutiRobotSimulator3D():
         momentum_frame = []
         orientation_frame = []
 
+        bending_internal_couple_frame = []
+        shear_internal_couple_frame = []
+        tau_x_base_frame = []
+        strain_local_frame = []
+
        
         for i in range(len(self.connected_robot.robots)):
 
@@ -137,6 +149,10 @@ class MutiRobotSimulator3D():
             force_frame.append(self.connected_robot.compute_force_local_total_individual_robot(robot_index=i).copy())
             momentum_frame.append(self.connected_robot.robots[i].momentum.copy())
             orientation_frame.append(self.connected_robot.robots[i].orientation.copy())
+            bending_internal_couple_frame.append(self.connected_robot.bending_internal_couple.copy())
+            shear_internal_couple_frame.append(self.connected_robot.shear_internal_couple.copy())
+            tau_x_base_frame.append(self.connected_robot.tau_x_base)
+            strain_local_frame.append(self.connected_robot.strain_local.copy())
 
 
         posture_frame = np.array(posture_frame)
@@ -152,6 +168,12 @@ class MutiRobotSimulator3D():
         self.force_collection.append(force_frame)
         self.momentum_collection.append(momentum_frame)
         self.orientation_collection.append(orientation_frame)
+
+        self.bending_internal_couple_collection.append(bending_internal_couple_frame)
+        self.shear_internal_couple_collection.append(shear_internal_couple_frame)
+        self.tau_x_base_collection.append(tau_x_base_frame)
+        self.strain_local_collection.append(strain_local_frame)
+
         if self._pbar is not None:
             current_pct = int(len(self.posture_collection) / self._total_steps * 100)
             if current_pct > self._last_pct:

@@ -9,6 +9,7 @@ where F is the applied force, L is the length of the beam, E is the Young
 
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 from robot3d.ConnectedRigidRobot3D import ConnectedRigidRobots3D
 from robot3d.SimulatorConnectedRobot3D import MutiRobotSimulator3D
 from robot3d.RigidRobot3D import RigidRobot3D
@@ -85,9 +86,9 @@ if __name__ == "__main__":
     width = 0.01  # m
     
 
-    n_elements = 20
+    n_elements = 100
     load = F / n_elements  # Distribute the total load equally among the disks
-    E_module = 1.2 * 1e7 / 1e6  # Pa
+    E_module = 1.2 * 1e7 / 1e6 * 2.0 # Pa
     poisson_ratio = 0 
     G_module = E_module / (2 * (1 + poisson_ratio)) # Pa
     total_length = 0.5  # m
@@ -96,8 +97,8 @@ if __name__ == "__main__":
     I_z = I_x + I_y  # m^4, polar moment of inertia for a circular cross-section
 
     density = 1000  # kg/m^3
-    time_step = 0.01 / 10 # s
-    duration = 35.0 # s
+    time_step = 0.00001  # s
+    duration = 80.0 # s
 
     damping_spring = np.array([1.0, 1.0, 1.0])   / 30
     damping_tortional_spring = np.array([2e-3, 2e-3, 2e-3]) / 40

@@ -79,14 +79,14 @@ def generate_series_connection_map(
 
 if __name__ == "__main__":
 
-    # -------------------- Initialization of the cantilever beam system --------------
+  # -------------------- Initialization of the cantilever beam system --------------
 
     F = 0.0004 # N total load
     persistence_time = 200 # s, time duration for which the load is applied
     width = 0.01  # m
     
 
-    n_elements = 100
+    n_elements = 15
     load = F / n_elements  # Distribute the total load equally among the disks
     E_module = 1.2 * 1e7 / 1e6 * 2.0 # Pa
     poisson_ratio = 0 
@@ -97,14 +97,16 @@ if __name__ == "__main__":
     I_z = I_x + I_y  # m^4, polar moment of inertia for a circular cross-section
 
     density = 1000  # kg/m^3
-    time_step = 0.00001  # s
-    duration = 80.0 # s
+    time_step = 0.0032  # s
+    duration = 40.0 # s
 
     damping_spring = np.array([1.0, 1.0, 1.0])   / 30
     damping_tortional_spring = np.array([2e-3, 2e-3, 2e-3]) / 40
+    S_modifier = 1.0
 
 
     # ---------------------------------------- End ---------------------------------
+
 
     total_volume = 0.01 **2 * total_length  # m^3, volume of the beam
     total_mass = density * total_volume  # kg
@@ -116,7 +118,7 @@ if __name__ == "__main__":
 
     k_spring = np.array([G_module * (4/3) * cross_section_area, 
                          G_module * (4/3) * cross_section_area,
-                         E_module * cross_section_area])
+                         E_module * cross_section_area]) * S_modifier
 
     k_tortional_spring = np.array([
         E_module * I_x, E_module * I_y, G_module * I_z
@@ -195,8 +197,8 @@ if __name__ == "__main__":
     plt.plot(time_collection, bending_internal_couple_collection[:,0,0], label="Bending Internal Couple")
     plt.plot(time_collection, shear_internal_couple_collection[:,0,0], label="Shear Internal Couple")
     plt.plot(time_collection, tau_x_base_collection[:,0], label="Tau_x Base")
-    plt.plot(time_collection, force_collection[:,0,3], label="Total Tau 0")
-    plt.plot(time_collection, strain_local_collection[:,0,1], label="Total Tau 1")
+    #plt.plot(time_collection, force_collection[:,0,3], label="Total Tau 0")
+    #plt.plot(time_collection, strain_local_collection[:,0,1], label="Total Tau 1")
     plt.xlabel("Time (s)")
     plt.ylabel("Internal Couple (N·m)")
     plt.title("Internal Couples on the First Disk")

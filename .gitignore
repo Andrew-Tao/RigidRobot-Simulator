@@ -31,3 +31,4 @@ dist/
 *.log
 *.mp4
 *.gif
+*.npy

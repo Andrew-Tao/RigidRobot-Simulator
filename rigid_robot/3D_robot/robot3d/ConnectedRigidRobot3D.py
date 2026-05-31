@@ -144,16 +144,25 @@ class ConnectedRigidRobots3D:
         original_front_direction_vector =  orientation_Q[:3,2] 
         strain_local = orientation_Q.T @ (relative_spring_anchor_point_global - original_front_direction_vector) # strain_L = Q.T (et - d3)
 
-         # Damping uses relative velocity: v_self_world - v_anchor_world, expressed in body frame
+        # Damping uses relative velocity: v_self_world - v_anchor_world, expressed in body frame
         relative_velocity_body = v_body - orientation_Q.T @ anchor_velocity_world
-
         linear_spring_force_local = strain_local * spring_stiffness
+
+        # Bondary Condition for the last robot free boundary condition TODO: Clean this
+        #if test_flag == len(self.robots) - 1: 
+        #    linear_spring_force_local = 2 * linear_spring_force_local 
+
         f_x, f_y, f_z = linear_spring_force_local - spring_damping_coefficient * relative_velocity_body
 
         #---------------------------------Bending & Twisting ------------------------------
         theta = robot.orientation.copy() - torque_spring_anchor_orientation
         relative_omega = omega - orientation_Q.T @ anchor_angular_velocity_world
         bend_twist_internal_couple = - (torque_spring_stiffness/spring_original_length) * theta
+
+        # Bondary Condition for the last robot free boundary condition  TODO: Clean this
+        if test_flag == len(self.robots) - 1: 
+            bend_twist_internal_couple = np.zeros(3)
+
         front_direction_unit_vector =  np.array([0.0, 0.0, 1.0])
         shear_stretch_internal_couple =  spring_original_length * np.cross(front_direction_unit_vector, linear_spring_force_local)
         if not is_upon_anchor_disk: shear_stretch_internal_couple = np.zeros(3)

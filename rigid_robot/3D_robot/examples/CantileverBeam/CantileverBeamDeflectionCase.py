@@ -97,7 +97,7 @@ if __name__ == "__main__":
     I_z = I_x + I_y  # m^4, polar moment of inertia for a circular cross-section
 
     density = 1000  # kg/m^3
-    time_step = 0.0032  # s
+    time_step = 0.0036  # s
     duration = 40.0 # s
 
     damping_spring = np.array([1.0, 1.0, 1.0])   / 30
@@ -147,8 +147,6 @@ if __name__ == "__main__":
         )
 
     cantilever_beam = ConnectedRigidRobots3D(robots=robot_collection)
-
-    
 
     generate_series_connection_map(
         cantilever_beam,

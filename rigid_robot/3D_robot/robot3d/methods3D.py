@@ -269,3 +269,78 @@ def rotation_matrix_to_euler_zyx(Q):
     yaw   = np.arctan2(q21, q11)
 
     return np.array([roll, pitch, yaw])
+
+
+def vee(S: np.ndarray) -> np.ndarray:
+    """
+    Convert a 3x3 skew-symmetric matrix to a 3-vector.
+    
+    If
+        S = [[ 0, -wz,  wy],
+             [ wz,  0, -wx],
+             [-wy, wx,   0]]
+    then vee(S) = [wx, wy, wz].
+    """
+    return np.array([
+        S[2, 1],
+        S[0, 2],
+        S[1, 0]
+    ])
+
+
+def log_SO3(R: np.ndarray) -> np.ndarray:
+    """
+    Logarithm map from SO(3) to so(3), returned as a 3-vector.
+
+    Input:
+        R: 3x3 rotation matrix
+
+    Output:
+        theta_vec: 3-vector = theta * axis
+    """
+
+    R = np.asarray(R, dtype=float)
+
+    if R.shape != (3, 3):
+        raise ValueError("R must be a 3x3 matrix.")
+
+    # Numerical safety for arccos
+    cos_theta = (np.trace(R) - 1.0) / 2.0
+    cos_theta = np.clip(cos_theta, -1.0, 1.0)
+
+    theta = np.arccos(cos_theta)
+
+    # Case 1: very small rotation
+    if theta < 1e-8:
+        # log(R) ≈ 0.5 * (R - R.T)
+        return 0.5 * vee(R - R.T)
+
+    # Case 2: rotation close to pi
+    if np.pi - theta < 1e-6:
+        # More stable handling near 180 degrees
+        A = (R + np.eye(3)) / 2.0
+
+        axis = np.zeros(3)
+        axis[0] = np.sqrt(max(A[0, 0], 0.0))
+        axis[1] = np.sqrt(max(A[1, 1], 0.0))
+        axis[2] = np.sqrt(max(A[2, 2], 0.0))
+
+        # Fix signs using off-diagonal terms
+        if R[2, 1] - R[1, 2] < 0:
+            axis[0] = -axis[0]
+        if R[0, 2] - R[2, 0] < 0:
+            axis[1] = -axis[1]
+        if R[1, 0] - R[0, 1] < 0:
+            axis[2] = -axis[2]
+
+        norm_axis = np.linalg.norm(axis)
+        if norm_axis < 1e-8:
+            # Fallback
+            axis = np.array([1.0, 0.0, 0.0])
+        else:
+            axis = axis / norm_axis
+
+        return theta * axis
+
+    # General case
+    return theta / (2.0 * np.sin(theta)) * vee(R - R.T)

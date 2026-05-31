@@ -81,29 +81,29 @@ if __name__ == "__main__":
 
   # -------------------- Initialization of the cantilever beam system --------------
 
-    F = 0.0004 # N total load
+    F = 3 # N total load
     persistence_time = 200 # s, time duration for which the load is applied
     width = 0.01  # m
     
 
-    n_elements = 15
+    n_elements = 5
     load = F / n_elements  # Distribute the total load equally among the disks
-    E_module = 1.2 * 1e7 / 1e6 * 2.0 # Pa
+    E_module = 1.2 * 1e7  # Pa
     poisson_ratio = 0 
     G_module = E_module / (2 * (1 + poisson_ratio)) # Pa
     total_length = 0.5  # m
-    I_x = 0.01**4 / 12 * 1000 # m^4, moment of inertia for a circular cross-section
-    I_y = 0.01**4 / 12 * 1000 # m^4
+    I_x = 0.01**4 / 12  # m^4, moment of inertia for a circular cross-section
+    I_y = 0.01**4 / 12  # m^4
     I_z = I_x + I_y  # m^4, polar moment of inertia for a circular cross-section
 
     density = 1000  # kg/m^3
-    time_step = 0.0036  # s
-    duration = 40.0 # s
+    time_step = 0.0001  # s
+    duration = 2 # s
 
-    damping_spring = np.array([1.0, 1.0, 1.0])   / 30
-    damping_tortional_spring = np.array([2e-3, 2e-3, 2e-3]) / 40
+    damping_spring = np.array([1.0, 1.0, 1.0])  
+    damping_tortional_spring = np.array([1.0, 1.0, 1.0]) * 0.025
     S_modifier = 1.0
-
+    ramp_up_time = 1  # s, time duration for ramping up the load
 
     # ---------------------------------------- End ---------------------------------
 
@@ -166,15 +166,19 @@ if __name__ == "__main__":
     simulator_beam.attach(cantilever_beam)
 
 
-    for i in range(n_elements):
-        simulator_beam.connected_robot.robots[i].control_input = np.array([0.0,load,0.0,0.0,0.0,0.0])
-  
-   
     while simulator_beam.run():
 
-        if simulator_beam.current_time >= persistence_time:
-            for i in range(n_elements):
-                simulator_beam.connected_robot.robots[i].control_input = np.array([0.0,0.0,0.0,0.0,0.0,0.0])
+        t = simulator_beam.current_time
+        if t <= ramp_up_time:
+            current_load = load * (t / ramp_up_time)
+        elif t < persistence_time:
+            current_load = load
+        else:
+            current_load = 0.0
+
+        for i in range(n_elements):
+            simulator_beam.connected_robot.robots[i].control_input = np.array([0.0, current_load, 0.0, 0.0, 0.0, 0.0])
+
         simulator_beam.multi_robots_step()
         simulator_beam.multi_robot_record()
 
@@ -195,8 +199,8 @@ if __name__ == "__main__":
     plt.plot(time_collection, bending_internal_couple_collection[:,0,0], label="Bending Internal Couple")
     plt.plot(time_collection, shear_internal_couple_collection[:,0,0], label="Shear Internal Couple")
     plt.plot(time_collection, tau_x_base_collection[:,0], label="Tau_x Base")
-    #plt.plot(time_collection, force_collection[:,0,3], label="Total Tau 0")
-    #plt.plot(time_collection, strain_local_collection[:,0,1], label="Total Tau 1")
+    plt.plot(time_collection, force_collection[:,0,3], label="Total Tau 0")
+    plt.plot(time_collection, strain_local_collection[:,0,1], label="Total Tau 1")
     plt.xlabel("Time (s)")
     plt.ylabel("Internal Couple (N·m)")
     plt.title("Internal Couples on the First Disk")

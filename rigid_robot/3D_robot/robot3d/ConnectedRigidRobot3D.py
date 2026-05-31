@@ -159,17 +159,14 @@ class ConnectedRigidRobots3D:
         relative_omega = omega - orientation_Q.T @ anchor_angular_velocity_world
         bend_twist_internal_couple = - (torque_spring_stiffness/spring_original_length) * theta
 
-        # Bondary Condition for the last robot free boundary condition  TODO: Clean this
-        if test_flag == len(self.robots) - 1: 
-            bend_twist_internal_couple = np.zeros(3)
-
+    
         front_direction_unit_vector =  np.array([0.0, 0.0, 1.0])
         shear_stretch_internal_couple =  spring_original_length * np.cross(front_direction_unit_vector, linear_spring_force_local)
         if not is_upon_anchor_disk: shear_stretch_internal_couple = np.zeros(3)
         tau_x, tau_y, tau_z = bend_twist_internal_couple + shear_stretch_internal_couple - torque_spring_damping_coefficient * relative_omega
 
         total_force_local = np.array([f_x, f_y, f_z, tau_x, tau_y, tau_z])
-        if test_flag == 5 and is_upon_anchor_disk == False: 
+        if test_flag == 5 and is_upon_anchor_disk == True: 
             self.bending_internal_couple = bend_twist_internal_couple
             self.shear_internal_couple = shear_stretch_internal_couple
             self.tau_x_base = tau_x

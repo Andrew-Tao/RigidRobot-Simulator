@@ -1,4 +1,5 @@
 import sys, os
+from time import time
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 from robot3d.ConnectedRigidRobot3D import ConnectedRigidRobots3D
@@ -70,6 +71,15 @@ def generate_series_connection_map(
     return 0
 
 
+def analytical_temoshenko_solution(x, F, E, I, G, A, L):
+
+    sigma = -F / ( A * (4/3) * G)
+    kappa = -F *L / (E * I * 2)
+    gamma = F / (6 * E * I) 
+
+    y = sigma * x + kappa * x**2 + gamma * x**3
+    return y
+
 
 if __name__ == "__main__":
 
@@ -77,7 +87,7 @@ if __name__ == "__main__":
 
     force = 15 # N total load
     radius = 0.25  # m
-    n_elements = 10
+    n_elements = 15
     E_module = 1e6  # Pa
     G_module = 1e4  #Pa
     total_length = 3.0  # m
@@ -87,15 +97,14 @@ if __name__ == "__main__":
     I_z = I_x + I_y  # m^4, polar moment of inertia for a circular cross-section
 
     density = 5000  # kg/m^3
-    time_step = 0.001  # s
-    duration = 5# s
+    time_step = 0.004  # s
+    duration =30# s
 
-
-    damping_spring = np.array([1.0, 1.0, 1.0])  * 0.01
+    damping_spring = np.array([1.0, 1.0, 1.0])  * 4000
     damping_tortional_spring = np.array([1.0, 1.0, 1.0]) * 0.035
 
     persistence_time = 2000 # s, time duration for which the load is applied
-    ramp_up_time = 2.5  # s, time duration for ramping up the load
+    ramp_up_time = 5  # s, time duration for ramping up the load
 
     # ---------------------------------------- End ---------------------------------
 
@@ -164,8 +173,8 @@ if __name__ == "__main__":
             current_load = force
         else:
             current_load = 0.0
-
-        simulator_beam.connected_robot.robots[-1].control_input = np.array([0.0, current_load, 0.0, 0.0, 0.0,0.0])
+      
+        simulator_beam.connected_robot.robots[-1].control_input = np.array([0.0, force, 0.0, 0.0, 0.0,0.0])
 
         simulator_beam.multi_robots_step()
         simulator_beam.multi_robot_record()
@@ -183,17 +192,40 @@ if __name__ == "__main__":
     tau_x_base_collection = np.array(simulator_beam.tau_x_base_collection)
     strain_local_collection = np.array(simulator_beam.strain_local_collection)
 
+    y_tip_collection = posture_collection[:, -1, 1, 3]  # Extract the y-position of the tip disk over time
 
-    plt.plot(time_collection, bending_internal_couple_collection[:,0,0], label="Bending Internal Couple")
-    plt.plot(time_collection, shear_internal_couple_collection[:,0,0], label="Shear Internal Couple")
-    plt.plot(time_collection, tau_x_base_collection[:,0], label="Tau_x Base")
-    plt.plot(time_collection, force_collection[:,0,3], label="Total Tau 0")
-    plt.plot(time_collection, strain_local_collection[:,0,1], label="Total Tau 1")
-    plt.xlabel("Time (s)")
-    plt.ylabel("Internal Couple (N·m)")
-    plt.title("Internal Couples on the First Disk")
+    x_position_collection = posture_collection[-1, :, 2, 3] # The x direction is actually the z direction
+    y_position_collection = posture_collection[-1, :, 1, 3]  # Extract the y-position of the tip disk over time
+
+    y_position_analytical = analytical_temoshenko_solution(-x_position_collection, force, E_module, I_x, G_module, A=cross_section_area, L=total_length)
+
+
+
+
+    #plt.plot(time_collection, bending_internal_couple_collection[:,0,0], label="Bending Internal Couple")
+    #plt.plot(time_collection, shear_internal_couple_collection[:,0,0], label="Shear Internal Couple")
+    #plt.plot(time_collection, tau_x_base_collection[:,0], label="Tau_x Base")
+    #plt.plot(time_collection, force_collection[:,0,3], label="Total Tau 0")
+    #plt.plot(time_collection, strain_local_collection[:,0,1], label="Total Tau 1")
+    plt.figure()
+    plt.plot(-x_position_collection, -y_position_collection, label = "simulation result")
+
+    plt.plot(-x_position_collection, y_position_analytical, label = "analytical solution")
+
+    plt.xlabel("X-Position (m)")
+    plt.ylabel("Y-Position (m)")
+    plt.title("Timoshenko Beam Configuration")
     plt.legend()
     plt.grid()
+    plt.show()
+
+    # ---------------- Plot 2 ----------------
+    plt.figure()
+    plt.plot(time_collection, -y_tip_collection, label="Tip Y-Position (Simulation)")
+    plt.xlabel("Time (s)")
+    plt.ylabel("Y-Position (m)")
+    plt.title("Plot 2: Tip Y-Position Over Time")
+    plt.grid(True)
     plt.show()
 
 
@@ -258,24 +290,5 @@ if __name__ == "__main__":
 
     fig2.tight_layout()
     plt.show()
-
-    # ── 3-D animation ────────────────────────────────────────────────────────
-    animate_slender_robot(
-        time_collection   = time_collection,
-        posture_collection= posture_collection,
-        force_collection  = None,
-        disk_radius       = width * 5,
-        output_path       = 'slender_robot_simulation.mp4',  # falls back to .gif if ffmpeg missing
-        fps               = 20,
-        force_scale       = 0.5,
-        skip_frames       = 5,
-        view_yaw          = 0.0,   # degrees — rotate camera around world Z
-        view_pitch        = 0.0,    # degrees — camera elevation above horizontal
-        view_roll         = 0.0,     # degrees — roll around the line of sight
-    )
-
-
-
-
 
 

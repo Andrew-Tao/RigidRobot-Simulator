@@ -1,12 +1,3 @@
-"""
-Cantilever beam deflection case. This is a test case for the connected rigid robot model. We have two disks connected by a spring, and we apply a force on the second disk to see how the system behaves. The expected behavior is that the second disk will deflect due to the applied force, and the first disk will also move due to the connection between them. We can adjust the spring stiffness and damping coefficients to see how they affect the system's response.
-Used for Benchmarking the connected rigid robot model, and for visualizing the dynamic response of a simple two-disk system under external force and spring connection. This case can also be used to validate the implementation of the spring forces and torques in the ConnectedRigidRobots3D class.
-The analytical solution is provided by the Euler-Bernoulli beam theory for a cantilever beam with a point load at the free end. The deflection can be calculated using the formula:
-delta = (F * L^3) / (3 * E * I)
-where F is the applied force, L is the length of the beam, E is the Young
-"""
-
-
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
@@ -19,6 +10,8 @@ from robot3d.methods3D import SE3LieAlgebra
 import matplotlib.pyplot as plt
 from scipy.spatial.transform import Rotation as R
 from SlenderRobotVisualization import animate_slender_robot
+
+
 
 lie3 = SE3LieAlgebra()
 
@@ -77,61 +70,57 @@ def generate_series_connection_map(
     return 0
 
 
+
 if __name__ == "__main__":
 
-  # -------------------- Initialization of the cantilever beam system --------------
+    # -------------------- Initialization of the cantilever beam system --------------
 
-    F = 3 # N total load
-    persistence_time = 200 # s, time duration for which the load is applied
-    width = 0.01  # m
-    
+    force = 15 # N total load
+    radius = 0.25  # m
+    n_elements = 10
+    E_module = 1e6  # Pa
+    G_module = 1e4  #Pa
+    total_length = 3.0  # m
 
-    n_elements = 5
-    load = F / n_elements  # Distribute the total load equally among the disks
-    E_module = 1.2 * 1e7  # Pa
-    poisson_ratio = 0 
-    G_module = E_module / (2 * (1 + poisson_ratio)) # Pa
-    total_length = 0.5  # m
-    I_x = 0.01**4 / 12  # m^4, moment of inertia for a circular cross-section
-    I_y = 0.01**4 / 12  # m^4
+    I_x = np.pi * (radius**4) / 4  # m^4, moment of inertia for bending about x-axis
+    I_y = np.pi * (radius**4) / 4  # m^4, moment of inertia for bending about y-axis
     I_z = I_x + I_y  # m^4, polar moment of inertia for a circular cross-section
 
-    density = 1000  # kg/m^3
-    time_step = 0.00001  # s
-    duration = 5 # s
+    density = 5000  # kg/m^3
+    time_step = 0.001  # s
+    duration = 5# s
 
-    damping_spring = np.array([1.0, 1.0, 1.0])  
+
+    damping_spring = np.array([1.0, 1.0, 1.0])  * 0.01
     damping_tortional_spring = np.array([1.0, 1.0, 1.0]) * 0.035
-    S_modifier = 1.0
+
+    persistence_time = 2000 # s, time duration for which the load is applied
     ramp_up_time = 2.5  # s, time duration for ramping up the load
 
     # ---------------------------------------- End ---------------------------------
 
 
-    total_volume = 0.01 **2 * total_length  # m^3, volume of the beam
+    total_volume = np.pi * (radius**2) * total_length  # m^3, volume of the beam
     total_mass = density * total_volume  # kg
 
     segment_mass = total_mass / n_elements
     segment_length = total_length / n_elements
-    cross_section_area = 0.01 **2  # m^2, cross-sectional area of the beam
+    cross_section_area = np.pi * (radius**2)
 
 
     k_spring = np.array([G_module * (4/3) * cross_section_area, 
-                         G_module * (4/3) * cross_section_area,
-                         E_module * cross_section_area]) * S_modifier
+                            G_module * (4/3) * cross_section_area,
+                            E_module * cross_section_area]) 
 
     k_tortional_spring = np.array([
         E_module * I_x, E_module * I_y, G_module * I_z
     ]) 
 
-    I_h = (1/12) * segment_mass * ((0.01)**2 + (0.01)**2)
-    I_w = (1/12) * segment_mass * ((0.01)**2 + segment_length**2)
-    I_d = (1/12) * segment_mass * ((0.01)**2 + segment_length**2)
+    I_x_mass = (1/12) * segment_mass * (3 * radius**2 + segment_length**2)
+    I_y_mass = (1/12) * segment_mass * (3 * radius**2 + segment_length**2)
+    I_z_mass = (1/2) * segment_mass * radius**2
 
-
-    moment_inertia = np.array([I_w, I_d, I_h]) 
-
-   
+    moment_inertia = np.array([I_x_mass, I_y_mass, I_z_mass])
 
     robot_collection = generate_series_robot_disks(
         n_disks = n_elements,
@@ -142,14 +131,14 @@ if __name__ == "__main__":
                                         [0.0, 0.0, -1.0]]),
         mass = segment_mass,
         moment_inertia = moment_inertia,
-        radius = width,
+        radius = radius,
         thickness = 0.025,
         )
 
-    cantilever_beam = ConnectedRigidRobots3D(robots=robot_collection)
+    timoshenko_beam = ConnectedRigidRobots3D(robots=robot_collection)
 
     generate_series_connection_map(
-        cantilever_beam,
+        timoshenko_beam,
         k_spring,
         damping_spring,
         k_tortional_spring,
@@ -163,27 +152,26 @@ if __name__ == "__main__":
         stepper = 'explicit_euler',
         control_logic = None)
 
-    simulator_beam.attach(cantilever_beam)
+    simulator_beam.attach(timoshenko_beam)
 
 
     while simulator_beam.run():
 
         t = simulator_beam.current_time
         if t <= ramp_up_time:
-            current_load = load * (t / ramp_up_time)
+            current_load = force * (t / ramp_up_time)
         elif t < persistence_time:
-            current_load = load
+            current_load = force
         else:
             current_load = 0.0
 
-        for i in range(n_elements):
-            simulator_beam.connected_robot.robots[i].control_input = np.array([0.0, current_load, 0.0, 0.0, 0.0, 0.0])
+        simulator_beam.connected_robot.robots[-1].control_input = np.array([0.0, current_load, 0.0, 0.0, 0.0,0.0])
 
         simulator_beam.multi_robots_step()
         simulator_beam.multi_robot_record()
 
 
-          # Data collection (place holder for now)
+            # Data collection (place holder for now)
     #print(len(simulator_beam.time_collection))
     time_collection = np.array(simulator_beam.time_collection)
 
@@ -195,7 +183,7 @@ if __name__ == "__main__":
     tau_x_base_collection = np.array(simulator_beam.tau_x_base_collection)
     strain_local_collection = np.array(simulator_beam.strain_local_collection)
 
-    
+
     plt.plot(time_collection, bending_internal_couple_collection[:,0,0], label="Bending Internal Couple")
     plt.plot(time_collection, shear_internal_couple_collection[:,0,0], label="Shear Internal Couple")
     plt.plot(time_collection, tau_x_base_collection[:,0], label="Tau_x Base")
@@ -207,7 +195,7 @@ if __name__ == "__main__":
     plt.legend()
     plt.grid()
     plt.show()
-    
+
 
     #print("force_colleciton", force_collection)
     #print(force_collection)
@@ -246,7 +234,7 @@ if __name__ == "__main__":
         ax.grid(True)
 
     plt.tight_layout()
- 
+
 
     # --- Forces & Torques (all 6 components) ---
     force_labels = ["fx (N)", "fy (N)", "fz (N)", "tx (N·m)", "ty (N·m)", "tz (N·m)"]
@@ -270,7 +258,7 @@ if __name__ == "__main__":
 
     fig2.tight_layout()
     plt.show()
-    
+
     # ── 3-D animation ────────────────────────────────────────────────────────
     animate_slender_robot(
         time_collection   = time_collection,
@@ -288,6 +276,6 @@ if __name__ == "__main__":
 
 
 
-    
+
 
 

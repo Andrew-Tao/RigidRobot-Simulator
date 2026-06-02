@@ -36,10 +36,6 @@ class ConnectedRigidRobots3D:
         self.shear_internal_couple = np.zeros(3)
         self.tau_x_base = 0.0
         self.strain_local = np.zeros(3)
-
-
-        
-
         self.force = np.zeros((len(robots), 6)) # Collection of the force for each individual robot #TODO: Use this
         self.base_robot = self.generate_base_robot(first_robot = robots[0]) # This is an imagine robot which represent the fixed origin point
 

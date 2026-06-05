@@ -8,7 +8,6 @@ where F is the applied force, L is the length of the beam, E is the Young
 Benchmarking with Pyelasics example Cantilever beam under nonconservative load of 20 N 
 """
 
-
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
@@ -84,7 +83,6 @@ if __name__ == "__main__":
     F = 3 # N total load
     persistence_time = 200 # s, time duration for which the load is applied
     width = 0.01  # m
-    
     
 # -------------------- Initialization of the cantilever beam system --------------
 

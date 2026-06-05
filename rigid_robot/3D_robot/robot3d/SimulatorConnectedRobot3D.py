@@ -8,8 +8,6 @@ if __package__ is None or __package__ == "":
 
 import numpy as np
 from .methods3D import SE3LieAlgebra
-import matplotlib.pyplot as plt
-from scipy.spatial.transform import Rotation as R
 from .ConnectedRigidRobot3D import ConnectedRigidRobots3D
 from tqdm import tqdm
 
@@ -48,6 +46,7 @@ class MutiRobotSimulator3D():
 
 
         self.external_force_list = [] # Collection of External Forces
+        self._last_forces_k = None
         self.current_time = 0.0
         self._total_steps = int(duration / time_step)
         self._last_pct = 0
@@ -85,12 +84,13 @@ class MutiRobotSimulator3D():
             forces_k.append(self.connected_robot.compute_force_local_total_individual_robot(robot_index=i))
 
         #-------------Add External Forces, adding to forces_k---------------
-        external_force_k = np.zeros((n, 6))  
-        for force_type in self.external_force_list:  
-            external_force_k += force_type.compute_force_collection(self.connected_robot, self.current_time)  
+        external_force_k = np.zeros((n, 6))
+        for force_type in self.external_force_list:
+            external_force_k += force_type.compute_force_collection(self.connected_robot, self.current_time)
         for i in range(n):
             forces_k[i] += external_force_k[i]
-            
+
+        self._last_forces_k = forces_k
 
         # Now integrate all robots using only time-k states
         for i in range(n):
@@ -104,20 +104,20 @@ class MutiRobotSimulator3D():
                 momentum_kp1 = (lie3.exp_adjoint(-velocity_k_matrix*self.time_step) @ momentum_k) + (force_k * self.time_step)
 
             # -------------------Symplectic Euler Integration -------------------
-            if self.stepper == 'symplectic_euler':
+            elif self.stepper == 'symplectic_euler':
                 momentum_kp1 = (lie3.exp_adjoint(-velocity_k_matrix*self.time_step) @ momentum_k) + (force_k * self.time_step)
-                velocity_kp1_matrix = lie3.hat(np.linalg.inv(robot.mass_matrix) @ momentum_kp1)
+                velocity_kp1_matrix = lie3.hat(robot.mass_matrix_inv @ momentum_kp1)
                 posture_kp1 = posture_k @ lie3.exp(velocity_kp1_matrix * self.time_step)
 
             #---------------------Position Verlet Integration----------------------
-            if self.stepper == 'position_verlet':
+            elif self.stepper == 'position_verlet':
                 posture_k_phalf = posture_k @ lie3.exp(velocity_k_matrix * (self.time_step / 2))
                 robot.posture = posture_k_phalf
                 force_k_phalf = robot.compute_force_local_total_individual_robot(robot.control_input)
                 momentum_kp1 = (lie3.exp_adjoint(-velocity_k_matrix*self.time_step) @ momentum_k) + (force_k_phalf * self.time_step)
                 posture_kp1 = posture_k_phalf @ lie3.exp(velocity_k_matrix * (self.time_step / 2))
 
-            xi_kp1 = np.linalg.solve(robot.mass_matrix, momentum_kp1)
+            xi_kp1 = robot.mass_matrix_inv @ momentum_kp1
 
             robot.posture = posture_kp1
             robot.momentum = momentum_kp1
@@ -146,7 +146,7 @@ class MutiRobotSimulator3D():
 
             posture_frame.append(self.connected_robot.robots[i].posture.copy())
             velocity_matrix_frame.append(self.connected_robot.robots[i].velocity_matrix.copy())
-            force_frame.append(self.connected_robot.compute_force_local_total_individual_robot(robot_index=i).copy())
+            force_frame.append(self._last_forces_k[i].copy())
             momentum_frame.append(self.connected_robot.robots[i].momentum.copy())
             orientation_frame.append(self.connected_robot.robots[i].orientation.copy())
             bending_internal_couple_frame.append(self.connected_robot.bending_internal_couple.copy())

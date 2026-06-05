@@ -1,9 +1,8 @@
 from .methods3D import SE3LieAlgebra, rpy_to_Q, rotation_matrix_to_euler_zyx
 import numpy as np
-import matplotlib.pyplot as plt
-lie3 = SE3LieAlgebra()
-from scipy.spatial.transform import Rotation as R
 from dataclasses import dataclass
+
+lie3 = SE3LieAlgebra()
 
 class RigidRobot3D:
     def __init__(
@@ -39,7 +38,9 @@ class RigidRobot3D:
         self.thickness = thickness
         self.posture = self.compute_posture(position, orientation)
         self.velocity_matrix = self.compute_velocity_matrix(linear_velocity, angular_velocity)
-        self.mass_matrix = np.diag([mass,mass,mass, inertia[0], inertia[1], inertia[2]])  # Mass matrix in SE(3)
+        _diag = np.array([mass, mass, mass, inertia[0], inertia[1], inertia[2]])
+        self.mass_matrix = np.diag(_diag)
+        self.mass_matrix_inv = np.diag(np.where(_diag != 0, 1.0 / np.where(_diag != 0, _diag, 1.0), 0.0))
         self.momentum = self.mass_matrix @ lie3.vee(self.velocity_matrix)  # 3-vector μ = M·ξ
         self.environment_resitriction = None
         self.force = None  # Generalized force in R^3 vector form [f_x, f_y, tau]
@@ -87,7 +88,7 @@ class RigidRobot3D:
         omega_x, omega_y, omega_z   = self.velocity_matrix[2, 1], self.velocity_matrix[0, 2], self.velocity_matrix[1, 0]    # angular velocity
         omega = np.array([omega_x, omega_y, omega_z])
 
-        spring_anchor_point_local = np.linalg.inv(orientation_Q) @ (spring_anchor_point - position)
+        spring_anchor_point_local = orientation_Q.T @ (spring_anchor_point - position)
         spring_current_length = np.linalg.norm(spring_anchor_point_local)
         delta_length = spring_current_length - spring_original_length
         if spring_current_length > 1e-6:

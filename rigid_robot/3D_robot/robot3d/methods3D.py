@@ -193,11 +193,11 @@ class SE3LieAlgebra:
         else:
             R   = np.eye(3) + ((1 - c) / theta**2) * W + ((theta - s) / theta**3) * W2
 
+        R_so3 = self.exp_SO3(W)
         exp_ad = np.zeros((6, 6))
-        exp_ad[:3, :3] =  self.exp_SO3(W)
-
-        exp_ad[3:, :3] = self.exp_SO3(W) @ R @ (self._skew(v))
-        exp_ad[3:, 3:] = self.exp_SO3(W)
+        exp_ad[:3, :3] = R_so3
+        exp_ad[3:, :3] = R_so3 @ R @ self._skew(v)
+        exp_ad[3:, 3:] = R_so3
 
         #print(f"exp_adjoint:\n {exp_ad}")
 

@@ -1,10 +1,9 @@
 from .methods3D import SE3LieAlgebra, rpy_to_Q
 import numpy as np
-import matplotlib.pyplot as plt
-lie3 = SE3LieAlgebra()
-from scipy.spatial.transform import Rotation as R
 from dataclasses import dataclass
 from .RigidRobot3D import RigidRobot3D
+
+lie3 = SE3LieAlgebra()
 
 
 @dataclass
@@ -47,10 +46,10 @@ class ConnectedRigidRobots3D:
         for i in range(number_of_connection):
             if not connection[i].to_base:
 
-                is_upon_sequence_flag = True if connection[i].to > robot_index else False 
-                
+                is_upon_sequence_flag = connection[i].to > robot_index
+
                 # See Gazzola Cossart Rod Model Equation 3.8
-                if is_upon_sequence_flag == True:
+                if is_upon_sequence_flag:
                     anchor_robot = self.robots[connection[i].to]
                     who_i_am_robot = self.robots[robot_index]
                 else:
@@ -79,7 +78,6 @@ class ConnectedRigidRobots3D:
             spring_damping_coefficient = connection[i].spring_damping_coefficient
             torque_spring_damping_coefficient = connection[i].torque_spring_damping_coefficient
 
-            test_flag = robot_index
             half_cross_section_force = self.compute_single_spring_force(
                 robot = who_i_am_robot,
                 is_upon_anchor_disk= is_upon_sequence_flag,
@@ -90,7 +88,7 @@ class ConnectedRigidRobots3D:
                 spring_original_length = spring_original_length,
                 anchor_velocity_world=anchor_velocity_world,
                 anchor_angular_velocity_world=anchor_angular_velocity_world,
-                test_flag = test_flag,
+                robot_index = robot_index,
                 spring_damping_coefficient= spring_damping_coefficient,
                 torque_spring_damping_coefficient= torque_spring_damping_coefficient
             )
@@ -121,7 +119,7 @@ class ConnectedRigidRobots3D:
         spring_original_length=0.04,
         anchor_velocity_world=np.zeros(3),
         anchor_angular_velocity_world=np.zeros(3),
-        test_flag = 3,
+        robot_index = -1,
         shear_stiffness = 5.0,
         spring_damping_coefficient = np.array([1.0,1.0,1.0]),
         torque_spring_damping_coefficient = np.array([1e-3,1e-3,1e-3])
@@ -151,7 +149,7 @@ class ConnectedRigidRobots3D:
         f_x, f_y, f_z = linear_spring_force_local - spring_damping_coefficient * relative_velocity_body
 
         #---------------------------------Bending & Twisting ------------------------------
-        theta = robot.orientation.copy() - torque_spring_anchor_orientation
+        theta = robot.orientation - torque_spring_anchor_orientation
         relative_omega = omega - orientation_Q.T @ anchor_angular_velocity_world
         bend_twist_internal_couple = - (torque_spring_stiffness/spring_original_length) * theta
 
@@ -162,7 +160,7 @@ class ConnectedRigidRobots3D:
         tau_x, tau_y, tau_z = bend_twist_internal_couple + shear_stretch_internal_couple - torque_spring_damping_coefficient * relative_omega
 
         total_force_local = np.array([f_x, f_y, f_z, tau_x, tau_y, tau_z])
-        if test_flag == 5 and is_upon_anchor_disk == True: 
+        if robot_index == 5 and is_upon_anchor_disk:
             self.bending_internal_couple = bend_twist_internal_couple
             self.shear_internal_couple = shear_stretch_internal_couple
             self.tau_x_base = tau_x

@@ -34,7 +34,7 @@ def generate_series_robot_disks(
     radius, 
     thickness, ):
     robot_disks = []
-    for i in range(n_disks+1): # TODO: Why n_disks + 1 ? --- IGNORE ---- Your rod is shorter than Pyelasca Cantilever beam but the reason is not clear yet.
+    for i in range(n_disks):
         robot_disk = RigidRobot3D(
             position = initial_position + np.array([0.0, 0.0, -(i+1) * length_between_disks]),
             orientation = initial_orientation,
@@ -215,9 +215,9 @@ if __name__ == "__main__":
     y_position_collection = posture_collection[-1, :, 2, 3]  # Extract the y-position of the tip disk over time
 
 
-    analytical_position = np.load("position.npy")
+    analytical_position = np.load(os.path.join(os.path.dirname(__file__), "position_collection.npy"))
     plt.figure()
-    plt.plot(x_position_collection, y_position_collection, label = "simulation result")
+    plt.plot(x_position_collection, y_position_collection + (total_length / n_elements), label = "simulation result")
     plt.plot(analytical_position[0], analytical_position[1], label = "analytical solution")
     plt.xlabel("X-Position (m)")
     plt.ylabel("Y-Position (m)")

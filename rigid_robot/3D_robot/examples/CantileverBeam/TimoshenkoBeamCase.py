@@ -87,7 +87,7 @@ if __name__ == "__main__":
 
     force = 15 # N total load
     radius = 0.25  # m
-    n_elements = 15
+    n_elements = 25
     E_module = 1e6  # Pa
     G_module = 1e4  #Pa
     total_length = 3.0  # m
@@ -97,7 +97,7 @@ if __name__ == "__main__":
     I_z = I_x + I_y  # m^4, polar moment of inertia for a circular cross-section
 
     density = 5000  # kg/m^3
-    time_step = 0.004  # s
+    time_step = 0.00225  # s
     duration =30# s
 
     damping_spring = np.array([1.0, 1.0, 1.0])  * 4000

@@ -4,6 +4,8 @@ Used for Benchmarking the connected rigid robot model, and for visualizing the d
 The analytical solution is provided by the Euler-Bernoulli beam theory for a cantilever beam with a point load at the free end. The deflection can be calculated using the formula:
 delta = (F * L^3) / (3 * E * I)
 where F is the applied force, L is the length of the beam, E is the Young
+
+Benchmarking with Pyelasics example Cantilever beam under nonconservative load of 20 N 
 """
 
 
@@ -32,7 +34,7 @@ def generate_series_robot_disks(
     radius, 
     thickness, ):
     robot_disks = []
-    for i in range(n_disks):
+    for i in range(n_disks+1): # TODO: Why n_disks + 1 ? --- IGNORE ---- Your rod is shorter than Pyelasca Cantilever beam but the reason is not clear yet.
         robot_disk = RigidRobot3D(
             position = initial_position + np.array([0.0, 0.0, -(i+1) * length_between_disks]),
             orientation = initial_orientation,
@@ -79,15 +81,21 @@ def generate_series_connection_map(
 
 if __name__ == "__main__":
 
-  # -------------------- Initialization of the cantilever beam system --------------
-
     F = 3 # N total load
     persistence_time = 200 # s, time duration for which the load is applied
     width = 0.01  # m
     
+    
+# -------------------- Initialization of the cantilever beam system --------------
 
-    n_elements = 5
-    load = F / n_elements  # Distribute the total load equally among the disks
+    F = 20 # N total load
+
+    persistence_time = 200 # s, time duration for which the load is applied
+    width = 0.01  # m
+    base_area = width * width  # m^2
+    
+    n_elements = 10
+    load = F / (n_elements * 20) # Why / 20 ? TODO: Why the Pyelasica mutipley load by np.mass[i]
     E_module = 1.2 * 1e7  # Pa
     poisson_ratio = 0 
     G_module = E_module / (2 * (1 + poisson_ratio)) # Pa
@@ -100,13 +108,18 @@ if __name__ == "__main__":
     time_step = 0.00001  # s
     duration = 5 # s
 
-    damping_spring = np.array([1.0, 1.0, 1.0])  
-    damping_tortional_spring = np.array([1.0, 1.0, 1.0]) * 0.035
+    print("I",I_x)
+    print(load)
+    print("density",density)
+    print("base_area",base_area)
+    print("width",width)
+
+    damping_spring = np.array([1.0, 1.0, 1.0])  * 1.5
+    damping_tortional_spring = np.array([1.0, 1.0, 1.0]) * 0.04
     S_modifier = 1.0
-    ramp_up_time = 2.5  # s, time duration for ramping up the load
+    ramp_up_time = 1  # s, time duration for ramping up the load
 
-    # ---------------------------------------- End ---------------------------------
-
+# ---------------------------------------- End ---------------------------------
 
     total_volume = 0.01 **2 * total_length  # m^3, volume of the beam
     total_mass = density * total_volume  # kg
@@ -195,7 +208,36 @@ if __name__ == "__main__":
     tau_x_base_collection = np.array(simulator_beam.tau_x_base_collection)
     strain_local_collection = np.array(simulator_beam.strain_local_collection)
 
-    
+
+    y_tip_collection = posture_collection[:, -1, 1, 3]  # Extract the y-position of the tip disk over time
+
+    x_position_collection = posture_collection[-1, :, 1, 3] # The x direction is actually the z direction
+    y_position_collection = posture_collection[-1, :, 2, 3]  # Extract the y-position of the tip disk over time
+
+
+    analytical_position = np.load("position.npy")
+    plt.figure()
+    plt.plot(x_position_collection, y_position_collection, label = "simulation result")
+    plt.plot(analytical_position[0], analytical_position[1], label = "analytical solution")
+    plt.xlabel("X-Position (m)")
+    plt.ylabel("Y-Position (m)")
+    plt.title("Timoshenko Beam Configuration")
+    plt.legend()
+    plt.grid()
+    plt.show()
+
+    # ---------------- Plot 2 ----------------
+    plt.figure()
+    plt.plot(time_collection, -y_tip_collection, label="Tip Y-Position (Simulation)")
+    plt.xlabel("Time (s)")
+    plt.ylabel("Y-Position (m)")
+    plt.title("Plot 2: Tip Y-Position Over Time")
+    plt.grid(True)
+    plt.show()
+
+
+
+    """
     plt.plot(time_collection, bending_internal_couple_collection[:,0,0], label="Bending Internal Couple")
     plt.plot(time_collection, shear_internal_couple_collection[:,0,0], label="Shear Internal Couple")
     plt.plot(time_collection, tau_x_base_collection[:,0], label="Tau_x Base")
@@ -207,6 +249,11 @@ if __name__ == "__main__":
     plt.legend()
     plt.grid()
     plt.show()
+    """
+
+   
+
+    """
     
 
     #print("force_colleciton", force_collection)
@@ -270,8 +317,10 @@ if __name__ == "__main__":
 
     fig2.tight_layout()
     plt.show()
+    """
     
     # ── 3-D animation ────────────────────────────────────────────────────────
+    """
     animate_slender_robot(
         time_collection   = time_collection,
         posture_collection= posture_collection,
@@ -285,6 +334,8 @@ if __name__ == "__main__":
         view_pitch        = 0.0,    # degrees — camera elevation above horizontal
         view_roll         = 0.0,     # degrees — roll around the line of sight
     )
+    """
+    
 
 
 

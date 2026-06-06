@@ -20,6 +20,37 @@ from BeamGenerator import generate_series_robot_disks, generate_series_connectio
 
 lie3 = SE3LieAlgebra()
 
+def period_detect(time_series, signal_series):
+    """
+    Detect the period of oscillation from the time series and signal series.
+    This is a simple implementation that detects peaks in the signal and calculates the average time between peaks.
+    """
+    from scipy.signal import find_peaks
+
+    peaks, _ = find_peaks(signal_series)
+    if len(peaks) < 2:
+        return None  # Not enough peaks to determine period
+    peak_times = time_series[peaks]
+    periods = np.diff(peak_times)
+    average_period = np.mean(periods)
+    return average_period
+
+def amplitude_detect(time_series, signal_series):
+    """
+    Detect the amplitude of oscillation as half the peak-to-peak distance:
+    average of the maxima minus average of the minima, divided by two.
+    This is robust to a constant offset (e.g. a static equilibrium deflection).
+    """
+    from scipy.signal import find_peaks
+
+    peaks, _ = find_peaks(signal_series)
+    troughs, _ = find_peaks(-signal_series)
+    if len(peaks) == 0 or len(troughs) == 0:
+        return None  # No peaks/troughs detected
+
+    peak_to_peak = np.mean(signal_series[peaks]) - np.mean(signal_series[troughs])
+    return peak_to_peak / 2
+
 if __name__ == "__main__":
 
 # -------------------- Initialization of the cantilever beam system --------------
@@ -39,20 +70,19 @@ if __name__ == "__main__":
     I_z = I_x + I_y  # m^4, polar moment of inertia
 
 
-    n_elements = 10
+    n_elements = 20
 
     persistence_time = 200 # s, time duration for which the load is applied
 
     time_step = 0.0001  # s
-    duration = 5 # s
+    duration = 1 # s
 
 
     damping_spring = np.array([1.0, 1.0, 1.0])  * 1.5 * 0 
     damping_tortional_spring = np.array([1.0, 1.0, 1.0]) * 0.04 * 0
 
-    ramp_up_time = 1  # s, time duration for ramping up the load
+    ramp_up_time = 0.001  # s, time duration for ramping up the load
 
-    
 
 # ---------------------------------------- End ---------------------------------
 
@@ -115,6 +145,14 @@ if __name__ == "__main__":
         duration=duration,
         stepper = 'position_verlet',
         control_logic = None)
+    
+    
+    tip_robot = cantilever_beam.robots[-1]
+    tip_inertia = np.diag(tip_robot.mass_matrix)[3:]
+    tip_diag = np.array([mass_p, mass_p, mass_p, *tip_inertia])
+    tip_robot.mass_matrix = np.diag(tip_diag)
+    tip_robot.mass_matrix_inv = np.diag(1.0 / tip_diag)
+    tip_robot.momentum = tip_robot.mass_matrix @ lie3.vee(tip_robot.velocity_matrix)
 
     simulator_beam.attach(cantilever_beam)
 
@@ -142,7 +180,6 @@ if __name__ == "__main__":
           # Data collection (place holder for now)
     #print(len(simulator_beam.time_collection))
     time_collection = np.array(simulator_beam.time_collection)
-
     posture_collection = np.array(simulator_beam.posture_collection)
     orientation_collection = np.array(simulator_beam.orientation_collection)
     force_collection = np.array(simulator_beam.force_collection)
@@ -152,36 +189,43 @@ if __name__ == "__main__":
     strain_local_collection = np.array(simulator_beam.strain_local_collection)
 
 
-    y_tip_collection = posture_collection[:, -1, 1, 3]  # Extract the y-position of the tip disk over time
 
-    x_position_collection = posture_collection[-1, :, 1, 3] # The x direction is actually the z direction
-    y_position_collection = posture_collection[-1, :, 2, 3]  # Extract the y-position of the tip disk over time
+    k = (E_module * cross_section_area / total_length)
+    simulation_period = period_detect(time_collection, posture_collection[:, -1, 2, 3])
+    simulation_amplitude = amplitude_detect(time_collection, posture_collection[:, -1, 2, 3] - total_length)
+    analytical_period = 2 * np.pi * np.sqrt((mass_p + mass_rod/3)/k)
+    analytical_amplitude = g * (mass_p + mass_rod/2) / k
+    print(f"Detected period of oscillation from simulation: {simulation_period:.4f} s")
+    print(f"Detected amplitude of oscillation from simulation: {simulation_amplitude:.4f} m")
+    print(f"Analytical period of oscillation: {analytical_period:.4f} s")
+    print(f"Analytical amplitude of oscillation: {analytical_amplitude:.4f} m")
 
-    """
-    analytical_position = np.load(os.path.join(os.path.dirname(__file__), "position_collection.npy"))
+    
+
+
+    z_tip_collection = posture_collection[:, -1, 2, 3] - posture_collection[0, -1, 2, 3]  # Extract the z-position of the tip disk over time
+   
+    star_delta_L = g * (mass_p + mass_rod/2) / k  # Analytical solution for the static deflection of the cantilever beam under the applied load
+    star_T = 2 * np.pi * np.sqrt((mass_p + mass_rod/3)/k) #Analytical solution for the period of oscillation of the cantilever beam under the applied load
+    y_axis_value = z_tip_collection / star_delta_L
+    x_axis_value = time_collection / star_T
+
+    y_analytical =  (1 + np.sin(2 * np.pi * time_collection / star_T - (np.pi / 2))) 
+
     plt.figure()
-    plt.plot(x_position_collection, y_position_collection + (total_length / n_elements), label = "simulation result")
-    plt.plot(analytical_position[0], analytical_position[1], label = "analytical solution")
-    plt.xlabel("X-Position (m)")
-    plt.ylabel("Y-Position (m)")
-    plt.title("Timoshenko Beam Configuration")
+    plt.plot(x_axis_value, y_axis_value, label = "simulation result")
+    plt.plot(x_axis_value, y_analytical, label = "analytical solution", color='black', linestyle='dashed')
+    plt.xlabel("Time (s)")
+    plt.ylabel("Z-Position (m)")
+    plt.title("Vertical Oscillation of Cantilever Beam Tip Under Gravity")
     plt.legend()
     plt.grid()
     plt.show()
 
-    # ---------------- Plot 2 ----------------
-    plt.figure()
-    plt.plot(time_collection, -y_tip_collection, label="Tip Y-Position (Simulation)")
-    plt.xlabel("Time (s)")
-    plt.ylabel("Y-Position (m)")
-    plt.title("Plot 2: Tip Y-Position Over Time")
-    plt.grid(True)
-    plt.show()
+ 
+
+
     """
-
-
-
-
     plt.plot(time_collection, bending_internal_couple_collection[:,0,0], label="Bending Internal Couple")
     plt.plot(time_collection, shear_internal_couple_collection[:,0,0], label="Shear Internal Couple")
     plt.plot(time_collection, tau_x_base_collection[:,0], label="Tau_x Base")
@@ -193,6 +237,7 @@ if __name__ == "__main__":
     plt.legend()
     plt.grid()
     plt.show()
+    """
 
 
     #print("force_colleciton", force_collection)

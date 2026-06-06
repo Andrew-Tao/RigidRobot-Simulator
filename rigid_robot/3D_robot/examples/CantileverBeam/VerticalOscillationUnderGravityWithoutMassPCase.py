@@ -55,11 +55,11 @@ if __name__ == "__main__":
 
 # -------------------- Initialization of the cantilever beam system --------------
 
-    n_elements = 100
+    n_elements = 10
 
-    mass_p = 100 # kg 
+    mass_p = 0 # kg 
     mass_rod = 1 # kg
-    E_module = 10 * 1e6  # Pa
+    E_module = 1e9  # Pa
     density = 1000  # kg/m^3
 
     G_module = (2/3) * E_module  # Pa
@@ -87,7 +87,7 @@ if __name__ == "__main__":
 
     time_step = 0.0001  # s
     #time_step = analytical_period / 1e6
-    duration = 2 # s
+    duration = 0.08 # s
 
 
     damping_spring = np.array([1.0, 1.0, 1.0])  * 1.5 * 0 
@@ -160,13 +160,6 @@ if __name__ == "__main__":
         stepper = stepper_type,
         control_logic = None)
     
-    
-    tip_robot = cantilever_beam.robots[-1]
-    tip_inertia = np.diag(tip_robot.mass_matrix)[3:]
-    tip_diag = np.array([mass_p, mass_p, mass_p, *tip_inertia])
-    tip_robot.mass_matrix = np.diag(tip_diag)
-    tip_robot.mass_matrix_inv = np.diag(1.0 / tip_diag)
-    tip_robot.momentum = tip_robot.mass_matrix @ lie3.vee(tip_robot.velocity_matrix)
 
     simulator_beam.attach(cantilever_beam)
 

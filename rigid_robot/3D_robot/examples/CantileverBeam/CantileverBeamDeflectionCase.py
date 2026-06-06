@@ -49,8 +49,8 @@ if __name__ == "__main__":
     I_z = I_x + I_y  # m^4, polar moment of inertia for a circular cross-section
 
     density = 1000  # kg/m^3
-    time_step = 0.00004  # s
-    duration = 2 # s
+    time_step = 0.0001  # s
+    duration = 0.04 # s
 
     print("I",I_x)
     print(load)
@@ -89,7 +89,6 @@ if __name__ == "__main__":
 
     moment_inertia = np.array([I_w, I_d, I_h]) 
 
-   
 
     robot_collection = generate_series_robot_disks(
         n_disks = n_elements,
@@ -182,7 +181,7 @@ if __name__ == "__main__":
 
 
 
-    """
+
     plt.plot(time_collection, bending_internal_couple_collection[:,0,0], label="Bending Internal Couple")
     plt.plot(time_collection, shear_internal_couple_collection[:,0,0], label="Shear Internal Couple")
     plt.plot(time_collection, tau_x_base_collection[:,0], label="Tau_x Base")
@@ -194,11 +193,8 @@ if __name__ == "__main__":
     plt.legend()
     plt.grid()
     plt.show()
-    """
 
-   
 
-    """
     
 
     #print("force_colleciton", force_collection)
@@ -262,7 +258,7 @@ if __name__ == "__main__":
 
     fig2.tight_layout()
     plt.show()
-    """
+
     
     # ── 3-D animation ────────────────────────────────────────────────────────
     """

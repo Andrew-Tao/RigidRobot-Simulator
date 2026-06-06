@@ -87,7 +87,7 @@ if __name__ == "__main__":
 
     time_step = 0.0001  # s
     #time_step = analytical_period / 1e6
-    duration = 0.08 # s
+    duration = 2 # s
 
 
     damping_spring = np.array([1.0, 1.0, 1.0])  * 1.5 * 0 
@@ -99,9 +99,6 @@ if __name__ == "__main__":
 
 
 # ---------------------------------------- End ---------------------------------
-
-
-
 
     total_volume = cross_section_area * total_length  # m^3, volume of the beam
     total_mass = density * total_volume  # kg

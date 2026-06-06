@@ -20,63 +20,9 @@ from robot3d.methods3D import SE3LieAlgebra
 import matplotlib.pyplot as plt
 from scipy.spatial.transform import Rotation as R
 from SlenderRobotVisualization import animate_slender_robot
+from BeamGenerator import generate_series_robot_disks, generate_series_connection_map
 
 lie3 = SE3LieAlgebra()
-
-def generate_series_robot_disks(
-    n_disks, 
-    length_between_disks,
-    initial_position, 
-    initial_orientation, 
-    mass, 
-    moment_inertia, 
-    radius, 
-    thickness, ):
-    robot_disks = []
-    for i in range(n_disks):
-        robot_disk = RigidRobot3D(
-            position = initial_position + np.array([0.0, 0.0, -(i+1) * length_between_disks]),
-            orientation = initial_orientation,
-            mass = mass,
-            inertia = moment_inertia,
-            linear_velocity = np.zeros(3),
-            angular_velocity = np.zeros(3),
-            radius = radius,
-            thickness = thickness,
-        )
-        robot_disks.append(robot_disk)
-    return robot_disks
-
-def generate_series_connection_map(
-    cantilever_beam,
-    k_spring,
-    damping_spring,
-    k_tortional_spring,
-    damping_tortional_spring,
-    spring_original_length):
-
-    cantilever_beam.add_connection(
-            (0, 1),
-            to_base = True,
-            spring_stiffness = k_spring,
-            spring_damping_coefficient = damping_spring,
-            torque_spring_stiffness = k_tortional_spring,
-            torque_spring_damping_coefficient = damping_tortional_spring,
-            spring_original_length = spring_original_length,
-        )
-
-    for i in range(len(cantilever_beam.robots)-1):
-        cantilever_beam.add_connection(
-            (i, i + 1),
-            to_base = False,
-            spring_stiffness = k_spring,
-            spring_damping_coefficient = damping_spring,
-            torque_spring_stiffness = k_tortional_spring,
-            torque_spring_damping_coefficient = damping_tortional_spring,
-            spring_original_length = spring_original_length,
-        )
-    return 0
-
 
 if __name__ == "__main__":
 
@@ -92,7 +38,7 @@ if __name__ == "__main__":
     width = 0.01  # m
     base_area = width * width  # m^2
     
-    n_elements = 10
+    n_elements = 25
     load = F / (n_elements * 20) # Why / 20 ? TODO: Why the Pyelasica mutipley load by np.mass[i]
     E_module = 1.2 * 1e7  # Pa
     poisson_ratio = 0 
@@ -103,8 +49,8 @@ if __name__ == "__main__":
     I_z = I_x + I_y  # m^4, polar moment of inertia for a circular cross-section
 
     density = 1000  # kg/m^3
-    time_step = 0.00001  # s
-    duration = 5 # s
+    time_step = 0.00004  # s
+    duration = 2 # s
 
     print("I",I_x)
     print(load)
@@ -112,10 +58,11 @@ if __name__ == "__main__":
     print("base_area",base_area)
     print("width",width)
 
-    damping_spring = np.array([1.0, 1.0, 1.0])  * 1.5
-    damping_tortional_spring = np.array([1.0, 1.0, 1.0]) * 0.04
+    damping_spring = np.array([1.0, 1.0, 1.0])  * 0
+    damping_tortional_spring = np.array([1.0, 1.0, 1.0]) * 0
     S_modifier = 1.0
-    ramp_up_time = 1  # s, time duration for ramping up the load
+    ramp_up_time = 0.001  # s, time duration for ramping up the load
+    stepper_type = 'position_verlet'  # 'euler', 'velocity_verlet', or 'position_verlet'
 
 # ---------------------------------------- End ---------------------------------
 
@@ -171,7 +118,7 @@ if __name__ == "__main__":
     simulator_beam = MutiRobotSimulator3D(
         time_step=time_step,
         duration=duration,
-        stepper = 'position_verlet',
+        stepper = stepper_type,
         control_logic = None)
 
     simulator_beam.attach(cantilever_beam)

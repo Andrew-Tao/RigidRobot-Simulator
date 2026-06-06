@@ -10,8 +10,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 from robot3d.ConnectedRigidRobot3D import ConnectedRigidRobots3D
 from robot3d.SimulatorConnectedRobot3D import MutiRobotSimulator3D
-from robot3d.RigidRobot3D import RigidRobot3D
-from robot3d.CableDrivenForce import CableDrivenForce, GravityForce
+from robot3d.CableDrivenForce import GravityForce
 import numpy as np
 from robot3d.methods3D import SE3LieAlgebra
 import matplotlib.pyplot as plt
@@ -23,64 +22,64 @@ lie3 = SE3LieAlgebra()
 
 if __name__ == "__main__":
 
-    F = 3 # N total load
-    persistence_time = 200 # s, time duration for which the load is applied
-    width = 0.01  # m
-    
 # -------------------- Initialization of the cantilever beam system --------------
 
-    F = 20 # N total load
+    mass_p = 100 # kg 
+    mass_rod = 1 # kg
+    E_module = 5 * 1e7  # Pa
+    density = 1000  # kg/m^3
+
+    G_module = (2/3) * E_module  # Pa
+    total_length = 1.0  # m
+    cross_section_area = mass_rod / (total_length * density)  # m^2, cross-sectional area of the beam
+
+    radius = np.sqrt(cross_section_area / np.pi)  # m, radius of the circular cross-section
+    I_x = (1/4) * np.pi * radius**4  # m^4, moment of inertia for a circular cross-section
+    I_y = I_x  # m^4
+    I_z = I_x + I_y  # m^4, polar moment of inertia
+
+
+    n_elements = 10
 
     persistence_time = 200 # s, time duration for which the load is applied
-    width = 0.01  # m
-    base_area = width * width  # m^2
-    
-    n_elements = 10
-    load = F / (n_elements * 20) # Why / 20 ? TODO: Why the Pyelasica mutipley load by np.mass[i]
-    E_module = 1.2 * 1e7  # Pa
-    poisson_ratio = 0 
-    G_module = E_module / (2 * (1 + poisson_ratio)) # Pa
-    total_length = 0.5  # m
-    I_x = 0.01**4 / 12  # m^4, moment of inertia for a circular cross-section
-    I_y = 0.01**4 / 12  # m^4
-    I_z = I_x + I_y  # m^4, polar moment of inertia for a circular cross-section
 
-    density = 1000  # kg/m^3
-    time_step = 0.00001  # s
+    time_step = 0.0001  # s
     duration = 5 # s
 
-    print("I",I_x)
-    print(load)
-    print("density",density)
-    print("base_area",base_area)
-    print("width",width)
 
-    damping_spring = np.array([1.0, 1.0, 1.0])  * 1.5
-    damping_tortional_spring = np.array([1.0, 1.0, 1.0]) * 0.04
-    S_modifier = 1.0
+    damping_spring = np.array([1.0, 1.0, 1.0])  * 1.5 * 0 
+    damping_tortional_spring = np.array([1.0, 1.0, 1.0]) * 0.04 * 0
+
     ramp_up_time = 1  # s, time duration for ramping up the load
+
+    
 
 # ---------------------------------------- End ---------------------------------
 
-    total_volume = 0.01 **2 * total_length  # m^3, volume of the beam
+
+    g = 9.81 # m/s^2
+
+    total_volume = cross_section_area * total_length  # m^3, volume of the beam
     total_mass = density * total_volume  # kg
 
     segment_mass = total_mass / n_elements
     segment_length = total_length / n_elements
-    cross_section_area = 0.01 **2  # m^2, cross-sectional area of the beam
+    load = segment_mass * g  # N, load applied to each disk to simulate gravity
+    load_p = mass_p * g
+
 
 
     k_spring = np.array([G_module * (4/3) * cross_section_area, 
                          G_module * (4/3) * cross_section_area,
-                         E_module * cross_section_area]) * S_modifier
+                         E_module * cross_section_area])
 
     k_tortional_spring = np.array([
         E_module * I_x, E_module * I_y, G_module * I_z
     ]) 
 
-    I_h = (1/12) * segment_mass * ((0.01)**2 + (0.01)**2)
-    I_w = (1/12) * segment_mass * ((0.01)**2 + segment_length**2)
-    I_d = (1/12) * segment_mass * ((0.01)**2 + segment_length**2)
+    I_w = (1/12) * segment_mass * ( 3 * radius**2 + segment_length**2 )
+    I_d = (1/12) * segment_mass * ( 3 * radius**2 + segment_length**2 )
+    I_h = (1/2) * segment_mass * radius**2
 
 
     moment_inertia = np.array([I_w, I_d, I_h]) 
@@ -96,7 +95,7 @@ if __name__ == "__main__":
                                         [0.0, 0.0, -1.0]]),
         mass = segment_mass,
         moment_inertia = moment_inertia,
-        radius = width,
+        radius = radius,
         thickness = 0.025,
         )
 
@@ -131,7 +130,10 @@ if __name__ == "__main__":
             current_load = 0.0
 
         for i in range(n_elements):
-            simulator_beam.connected_robot.robots[i].control_input = np.array([0.0, current_load, 0.0, 0.0, 0.0, 0.0])
+            if i == n_elements - 1:  # Apply the load to the last disk (tip of the beam)
+                simulator_beam.connected_robot.robots[i].control_input = np.array([0.0, 0.0, -current_load - load_p, 0.0, 0.0, 0.0])
+            else:   
+                simulator_beam.connected_robot.robots[i].control_input = np.array([0.0, 0.0, -load, 0.0, 0.0, 0.0])
 
         simulator_beam.multi_robots_step()
         simulator_beam.multi_robot_record()
@@ -155,7 +157,7 @@ if __name__ == "__main__":
     x_position_collection = posture_collection[-1, :, 1, 3] # The x direction is actually the z direction
     y_position_collection = posture_collection[-1, :, 2, 3]  # Extract the y-position of the tip disk over time
 
-
+    """
     analytical_position = np.load(os.path.join(os.path.dirname(__file__), "position_collection.npy"))
     plt.figure()
     plt.plot(x_position_collection, y_position_collection + (total_length / n_elements), label = "simulation result")
@@ -175,10 +177,11 @@ if __name__ == "__main__":
     plt.title("Plot 2: Tip Y-Position Over Time")
     plt.grid(True)
     plt.show()
-
-
-
     """
+
+
+
+
     plt.plot(time_collection, bending_internal_couple_collection[:,0,0], label="Bending Internal Couple")
     plt.plot(time_collection, shear_internal_couple_collection[:,0,0], label="Shear Internal Couple")
     plt.plot(time_collection, tau_x_base_collection[:,0], label="Tau_x Base")
@@ -190,10 +193,7 @@ if __name__ == "__main__":
     plt.legend()
     plt.grid()
     plt.show()
-    """
 
-
-    """
 
     #print("force_colleciton", force_collection)
     #print(force_collection)
@@ -256,7 +256,7 @@ if __name__ == "__main__":
 
     fig2.tight_layout()
     plt.show()
-    """
+
     
     # ── 3-D animation ────────────────────────────────────────────────────────
     """

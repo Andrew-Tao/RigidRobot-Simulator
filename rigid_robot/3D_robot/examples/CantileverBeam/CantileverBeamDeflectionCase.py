@@ -171,7 +171,7 @@ if __name__ == "__main__":
     simulator_beam = MutiRobotSimulator3D(
         time_step=time_step,
         duration=duration,
-        stepper = 'explicit_euler',
+        stepper = 'position_verlet',
         control_logic = None)
 
     simulator_beam.attach(cantilever_beam)

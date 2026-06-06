@@ -1,4 +1,37 @@
 import numpy as np
+from numba import njit
+
+_EPS = 1e-8
+
+
+@njit(cache=True)
+def _hat_jit(xi: np.ndarray) -> np.ndarray:
+    v1, v2, v3, w1, w2, w3 = xi
+    return np.array([[ 0.0, -w3,  w2, v1],
+                     [  w3, 0.0, -w1, v2],
+                     [ -w2,  w1, 0.0, v3],
+                     [ 0.0, 0.0, 0.0, 0.0]])
+
+
+@njit(cache=True)
+def _exp_jit(Xi: np.ndarray) -> np.ndarray:
+    v     = np.ascontiguousarray(Xi[:3, 3])
+    W     = np.ascontiguousarray(Xi[:3, :3])
+    theta = np.sqrt(W[2, 1]**2 + W[0, 2]**2 + W[1, 0]**2)
+
+    T = np.eye(4)
+    if theta < _EPS:
+        T[:3, :3] = np.eye(3) + W
+        T[:3,  3] = (np.eye(3) + 0.5 * W) @ v
+    else:
+        W2   = W @ W
+        s, c = np.sin(theta), np.cos(theta)
+        R    = np.eye(3) + (s / theta) * W + ((1 - c) / theta**2) * W2
+        V    = np.eye(3) + ((1 - c) / theta**2) * W + ((theta - s) / theta**3) * W2
+        T[:3, :3] = R
+        T[:3,  3] = V @ v
+
+    return T
 
 
 class SE3LieAlgebra:
@@ -33,13 +66,10 @@ class SE3LieAlgebra:
     # Algebra operators                                                    #
     # ------------------------------------------------------------------ #
 
+
     def hat(self, xi: np.ndarray) -> np.ndarray:
         """Map R^6 -> se(3): vector to 4x4 skew matrix."""
-        v1, v2, v3, w1, w2, w3 = xi
-        return np.array([[  0, -w3,  w2, v1],
-                         [ w3,   0, -w1, v2],
-                         [-w2,  w1,   0, v3],
-                         [  0,   0,   0,  0]], dtype=float)
+        return _hat_jit(xi)
 
     def vee(self, Xi: np.ndarray) -> np.ndarray:
         """Map se(3) -> R^6: 4x4 matrix to vector (inverse of hat)."""
@@ -74,23 +104,7 @@ class SE3LieAlgebra:
         Xi = [[ w×,  v ],
               [ 0^T, 0 ]]
         """
-        v     = Xi[:3, 3]
-        W     = Xi[:3, :3]                                          # skew(w)
-        theta = np.sqrt(W[2, 1]**2 + W[0, 2]**2 + W[1, 0]**2)    # |w|
-
-        T = np.eye(4)
-        if theta < self._EPS:
-            T[:3, :3] = np.eye(3) + W
-            T[:3,  3] = (np.eye(3) + 0.5 * W) @ v
-        else:
-            W2   = W @ W
-            s, c = np.sin(theta), np.cos(theta)
-            R    = np.eye(3) + (s / theta) * W + ((1 - c) / theta**2) * W2
-            V    = np.eye(3) + ((1 - c) / theta**2) * W + ((theta - s) / theta**3) * W2
-            T[:3, :3] = R
-            T[:3,  3] = V @ v
-
-        return T
+        return _exp_jit(Xi)
     
     def exp_SO3(self, W: np.ndarray) -> np.ndarray:
         """Exponential map for SO(3) rotation matrix."""

@@ -113,9 +113,10 @@ class MutiRobotSimulator3D():
             elif self.stepper == 'position_verlet':
                 posture_k_phalf = posture_k @ lie3.exp(velocity_k_matrix * (self.time_step / 2))
                 robot.posture = posture_k_phalf
-                force_k_phalf = robot.compute_force_local_total_individual_robot(robot.control_input)
+                force_k_phalf = self.connected_robot.compute_force_local_total_individual_robot(robot_index=i)
                 momentum_kp1 = (lie3.exp_adjoint(-velocity_k_matrix*self.time_step) @ momentum_k) + (force_k_phalf * self.time_step)
-                posture_kp1 = posture_k_phalf @ lie3.exp(velocity_k_matrix * (self.time_step / 2))
+                velocity_kp1_matrix = lie3.hat(robot.mass_matrix_inv @ momentum_kp1)
+                posture_kp1 = posture_k_phalf @ lie3.exp(velocity_kp1_matrix * (self.time_step / 2))
 
             xi_kp1 = robot.mass_matrix_inv @ momentum_kp1
 

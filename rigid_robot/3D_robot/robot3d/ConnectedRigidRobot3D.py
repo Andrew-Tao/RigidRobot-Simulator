@@ -162,14 +162,14 @@ class ConnectedRigidRobots3D:
         tau_x, tau_y, tau_z = bend_twist_internal_couple + shear_stretch_internal_couple - torque_spring_damping_coefficient * relative_omega
 
         total_force_local = np.array([f_x, f_y, f_z, tau_x, tau_y, tau_z])
-        if robot_index == 5 and is_upon_anchor_disk:
+        if robot_index == 0 and not is_upon_anchor_disk:
             self.bending_internal_couple = bend_twist_internal_couple
             self.shear_internal_couple = shear_stretch_internal_couple
             self.damping_couple = - torque_spring_damping_coefficient * relative_omega
             self.tau_x_base = tau_x
             self.strain_local = strain_local
 
-            #print("robot_index", test_flag,"\n")
+            #print("robot_index", robot_index,"\n")
             #print("orientation_Q", orientation_Q)
             #print("theta", theta)
             #print("torque_x", tau_x) 

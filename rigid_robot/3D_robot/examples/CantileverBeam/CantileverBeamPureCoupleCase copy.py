@@ -32,9 +32,9 @@ if __name__ == "__main__":
     
 # -------------------- Initialization of the cantilever beam system --------------
 
-    F = 0.0 # N total load
+    F = 10 # N total load
 
-    persistence_time = 1 # s, time duration for which the load is applied
+    persistence_time = 1000 # s, time duration for which the load is applied
     width = 0.01  # m
     base_area = width * width  # m^2
     
@@ -50,7 +50,7 @@ if __name__ == "__main__":
 
     density = 1000  # kg/m^3
     time_step = 0.0001  # s
-    duration = 2 # s
+    duration = 5 # s
 
     print("I",I_x)
     print(load)
@@ -61,7 +61,7 @@ if __name__ == "__main__":
     damping_spring = np.array([1.0, 1.0, 1.0])  * 0
     damping_tortional_spring = np.array([1.0, 1.0, 1.0]) * 0
     S_modifier = 1.0
-    ramp_up_time = 0.001  # s, time duration for ramping up the load
+    ramp_up_time = 5 # s, time duration for ramping up the load
     stepper_type = 'position_verlet'  # 'euler', 'velocity_verlet', or 'position_verlet'
     initial_z_angle_deg = 10.0  # degrees, initial Z-angle offset on the last disk for free response
 

@@ -16,13 +16,30 @@ from robot3d.SimulatorConnectedRobot3D import MutiRobotSimulator3D
 from robot3d.RigidRobot3D import RigidRobot3D
 from robot3d.CableDrivenForce import CableDrivenForce, GravityForce
 import numpy as np
-from robot3d.methods3D import SE3LieAlgebra
+from robot3d.methods3D import SE3LieAlgebra, log_SO3
 import matplotlib.pyplot as plt
 from scipy.spatial.transform import Rotation as R
 from SlenderRobotVisualization import animate_slender_robot
 from BeamGenerator import generate_series_robot_disks, generate_series_connection_map
 
 lie3 = SE3LieAlgebra()
+
+
+def max_bending_angle_at_frame(posture_frame: np.ndarray) -> float:
+    """
+    posture_frame: (n_disks, 4, 4) SE3 postures at one time step.
+    Returns the maximum bending angle (radians) between any two consecutive disks,
+    computed as ||log_SO3(R_i^T @ R_{i+1})||.
+    """
+    max_angle = 0.0
+    for i in range(len(posture_frame) - 1):
+        R_i   = posture_frame[i,   :3, :3]
+        R_ip1 = posture_frame[i+1, :3, :3]
+        angle = np.linalg.norm(log_SO3(R_i.T @ R_ip1))
+        if angle > max_angle:
+            max_angle = angle
+    return max_angle
+
 
 if __name__ == "__main__":
 
@@ -38,7 +55,7 @@ if __name__ == "__main__":
     width = 0.01  # m
     base_area = width * width  # m^2
     
-    n_elements = 25
+    n_elements = 100
     load = F / (n_elements * 20) # Why / 20 ? TODO: Why the Pyelasica mutipley load by np.mass[i]
     E_module = 1.2 * 1e7  # Pa
     poisson_ratio = 0 
@@ -49,8 +66,8 @@ if __name__ == "__main__":
     I_z = I_x + I_y  # m^4, polar moment of inertia for a circular cross-section
 
     density = 1000  # kg/m^3
-    time_step = 0.0001  # s
-    duration = 0.04 # s
+    time_step = 0.00004 # s
+    duration = 0.05 # s
 
     print("I",I_x)
     print(load)
@@ -259,7 +276,20 @@ if __name__ == "__main__":
     fig2.tight_layout()
     plt.show()
 
-    
+    # ── Max bending angle over time ──────────────────────────────────────────
+    max_bending_collection = np.array([
+        max_bending_angle_at_frame(posture_collection[t]) for t in range(len(time_collection))
+    ])
+
+    plt.figure()
+    plt.plot(time_collection, np.degrees(max_bending_collection))
+    plt.xlabel("Time (s)")
+    plt.ylabel("Max bending angle (deg)")
+    plt.title("Maximum inter-disk bending angle over time")
+    plt.grid(True)
+    plt.show()
+
+
     # ── 3-D animation ────────────────────────────────────────────────────────
 
     animate_slender_robot(

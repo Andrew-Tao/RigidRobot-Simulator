@@ -1,4 +1,4 @@
-from .methods3D import SE3LieAlgebra, rpy_to_Q
+from .methods3D import SE3LieAlgebra, rpy_to_Q, log_SO3
 import numpy as np
 from dataclasses import dataclass
 from .RigidRobot3D import RigidRobot3D
@@ -64,6 +64,7 @@ class ConnectedRigidRobots3D:
 
             spring_anchor_point = anchor_robot.posture[:3, 3]
             torque_spring_anchor_orientation = anchor_robot.orientation
+            torque_spring_anchor_Q = anchor_robot.posture[:3, :3]
             # Convert anchor body velocity to world frame: v_world = R @ v_body
             anchor_Q = anchor_robot.posture[:3, :3]
             anchor_velocity_world = anchor_Q @ anchor_robot.velocity_matrix[:3, 3]
@@ -84,6 +85,7 @@ class ConnectedRigidRobots3D:
                 is_upon_anchor_disk= is_upon_sequence_flag,
                 spring_anchor_point = spring_anchor_point,
                 torque_spring_anchor_orientation= torque_spring_anchor_orientation,
+                torque_spring_anchor_Q= torque_spring_anchor_Q,
                 spring_stiffness= spring_stiffness,
                 torque_spring_stiffness= torque_spring_stiffness,
                 spring_original_length = spring_original_length,
@@ -112,9 +114,10 @@ class ConnectedRigidRobots3D:
     def compute_single_spring_force(
         self,
         robot: RigidRobot3D,
-        is_upon_anchor_disk: bool, 
+        is_upon_anchor_disk: bool,
         spring_anchor_point=np.array([0.0, 0.0, 0.0]),
         torque_spring_anchor_orientation = np.array([0.0, 0.0, 0.0]),
+        torque_spring_anchor_Q = np.eye(3),
         spring_stiffness=np.array([1.0,1.0,1.0]),
         torque_spring_stiffness=np.array([0.01,0.01,0.01]),
         spring_original_length=0.04,
@@ -150,7 +153,8 @@ class ConnectedRigidRobots3D:
         f_x, f_y, f_z = linear_spring_force_local - spring_damping_coefficient * relative_velocity_body
 
         #---------------------------------Bending & Twisting ------------------------------
-        theta = robot.orientation - torque_spring_anchor_orientation
+        # Use log_SO3 for geometrically correct relative rotation (avoids Euler-angle drift bug)
+        theta = log_SO3(torque_spring_anchor_Q.T @ orientation_Q)
         relative_omega = omega - orientation_Q.T @ anchor_angular_velocity_world
         bend_twist_internal_couple = - (torque_spring_stiffness/spring_original_length) * theta
 

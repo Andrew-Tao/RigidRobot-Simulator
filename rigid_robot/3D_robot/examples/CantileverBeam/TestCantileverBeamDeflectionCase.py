@@ -16,7 +16,7 @@ from robot3d.SimulatorConnectedRobot3D import MutiRobotSimulator3D
 from robot3d.RigidRobot3D import RigidRobot3D
 from robot3d.CableDrivenForce import CableDrivenForce, GravityForce
 import numpy as np
-from robot3d.methods3D import SE3LieAlgebra, rotation_matrix_to_euler_zyx
+from robot3d.methods3D import SE3LieAlgebra
 import matplotlib.pyplot as plt
 from scipy.spatial.transform import Rotation as R
 from SlenderRobotVisualization import animate_slender_robot
@@ -26,21 +26,21 @@ lie3 = SE3LieAlgebra()
 
 if __name__ == "__main__":
 
-    F = 1000 # N total load
+    F = 3 # N total load
     persistence_time = 200 # s, time duration for which the load is applied
     width = 0.01  # m
     
 # -------------------- Initialization of the cantilever beam system --------------
 
-    F = 1000 # N total load
+    F = 20 # N total load
 
-    persistence_time = 1000 # s, time duration for which the load is applied
+    persistence_time = 200 # s, time duration for which the load is applied
     width = 0.01  # m
     base_area = width * width  # m^2
     
-    n_elements = 2
+    n_elements = 25
     load = F / (n_elements * 20) # Why / 20 ? TODO: Why the Pyelasica mutipley load by np.mass[i]
-    E_module = 1.2 * 1e7 * (0.01/1200) # Pa
+    E_module = 1.2 * 1e7  # Pa
     poisson_ratio = 0 
     G_module = E_module / (2 * (1 + poisson_ratio)) # Pa
     total_length = 0.5  # m
@@ -48,9 +48,9 @@ if __name__ == "__main__":
     I_y = 0.01**4 / 12  # m^4
     I_z = I_x + I_y  # m^4, polar moment of inertia for a circular cross-section
 
-    density = 1000 * ((4.16 * 1e-7) / (2.5 * 1e-2)) # kg/m^3
-    time_step = 0.0001  # s
-    duration = 2 # s
+    density = 1000  # kg/m^3
+    time_step = 0.00014 # s
+    duration = 0.1 # s
 
     print("I",I_x)
     print(load)
@@ -63,7 +63,6 @@ if __name__ == "__main__":
     S_modifier = 1.0
     ramp_up_time = 0.001  # s, time duration for ramping up the load
     stepper_type = 'position_verlet'  # 'euler', 'velocity_verlet', or 'position_verlet'
-    initial_z_angle_deg = 10.0  # degrees, initial Z-angle offset on the last disk for free response
 
 # ---------------------------------------- End ---------------------------------
 
@@ -82,10 +81,6 @@ if __name__ == "__main__":
     k_tortional_spring = np.array([
         E_module * I_x, E_module * I_y, G_module * I_z
     ]) 
-
-    print("k_spring", k_spring)
-    print("k_tortional_spring", k_tortional_spring)
-
 
     I_h = (1/12) * segment_mass * ((0.01)**2 + (0.01)**2)
     I_w = (1/12) * segment_mass * ((0.01)**2 + segment_length**2)
@@ -107,8 +102,6 @@ if __name__ == "__main__":
         radius = width,
         thickness = 0.025,
         )
-    
-    
 
     cantilever_beam = ConnectedRigidRobots3D(robots=robot_collection)
 
@@ -121,13 +114,6 @@ if __name__ == "__main__":
         spring_original_length = segment_length,
     )
 
-
-
-    print(cantilever_beam.robots[0].orientation)
-    print(cantilever_beam.robots[1].orientation)
-
-    print("mass_collection", np.diag(cantilever_beam.robots[0].mass_matrix))
-
     simulator_beam = MutiRobotSimulator3D(
         time_step=time_step,
         duration=duration,
@@ -135,8 +121,6 @@ if __name__ == "__main__":
         control_logic = None)
 
     simulator_beam.attach(cantilever_beam)
-
-    input_collection = []
 
 
     while simulator_beam.run():
@@ -148,10 +132,9 @@ if __name__ == "__main__":
             current_load = load
         else:
             current_load = 0.0
-      
-        #print("current_load", current_load)
-        simulator_beam.connected_robot.robots[-1].control_input = np.array([0.0, 0.0, current_load, 0.0, 0.0, 0.0])
-        input_collection.append(np.array([0.0, 0.0, current_load, 0.0, 0.0, 0.0]))
+
+        for i in range(n_elements):
+            simulator_beam.connected_robot.robots[i].control_input = np.array([0.0, current_load, 0.0, 0.0, 0.0, 0.0])
 
         simulator_beam.multi_robots_step()
         simulator_beam.multi_robot_record()
@@ -178,8 +161,6 @@ if __name__ == "__main__":
 
 
     analytical_position = np.load(os.path.join(os.path.dirname(__file__), "position_collection.npy"))
-
-    """
     plt.figure()
     plt.plot(x_position_collection, y_position_collection + (total_length / n_elements), label = "simulation result")
     plt.plot(analytical_position[0], analytical_position[1], label = "analytical solution")
@@ -198,24 +179,22 @@ if __name__ == "__main__":
     plt.title("Plot 2: Tip Y-Position Over Time")
     plt.grid(True)
     plt.show()
-    """
-
-    y_position_disk_0 = posture_collection[:, 0, 2, 3]  # Extract the y-position of the first disk over time
-    y_position_disk_1 = posture_collection[:, 1, 2, 3]  # Extract the y-position of the second disk over time
 
 
-    #plt.plot(time_collection, bending_internal_couple_collection[:,0,2], label="Bending Internal Couple")
-    plt.plot(time_collection, np.array(input_collection)[:,2], label="Control Input Load Z")
-    plt.plot(time_collection, y_position_disk_0, label="Y-Position Disk 0")
-    plt.plot(time_collection, y_position_disk_1, label="Y-Position Disk 1") 
-    #plt.plot(time_collection, damping_couple_collection[:,0], label="Damping Couple 0")
+
+
+    plt.plot(time_collection, bending_internal_couple_collection[:,0,0], label="Bending Internal Couple")
+    plt.plot(time_collection, shear_internal_couple_collection[:,0,0], label="Shear Internal Couple")
+    plt.plot(time_collection, tau_x_base_collection[:,0], label="Tau_x Base")
+    plt.plot(time_collection, force_collection[:,0,3], label="Total Tau 0")
+    plt.plot(time_collection, strain_local_collection[:,0,1], label="strain_local_collection")
+    plt.plot(time_collection, damping_couple_collection[:,0], label="Damping Couple 0")
     plt.xlabel("Time (s)")
     plt.ylabel("Internal Couple (N·m)")
     plt.title("Internal Couples on the First Disk")
     plt.legend()
     plt.grid()
     plt.show()
-
 
 
     #print("force_colleciton", force_collection)

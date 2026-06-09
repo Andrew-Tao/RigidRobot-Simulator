@@ -7,7 +7,7 @@ if __package__ is None or __package__ == "":
     __package__ = "robot3d"
 
 import numpy as np
-from .methods3D import SE3LieAlgebra
+from .methods3D import SE3LieAlgebra, rotation_matrix_to_euler_zyx
 from .ConnectedRigidRobot3D import ConnectedRigidRobots3D
 from tqdm import tqdm
 
@@ -124,9 +124,7 @@ class MutiRobotSimulator3D():
             robot.posture = posture_kp1
             robot.momentum = momentum_kp1
             robot.velocity_matrix = lie3.hat(xi_kp1)
-            velocity_temp = np.array([robot.velocity_matrix[2, 1], robot.velocity_matrix[0, 2], robot.velocity_matrix[1, 0]])
-            delta_orientation = velocity_temp * self.time_step
-            robot.orientation = robot.orientation + delta_orientation
+            robot.orientation = rotation_matrix_to_euler_zyx(posture_kp1[:3, :3])
 
         self.time_collection.append(self.current_time)
 

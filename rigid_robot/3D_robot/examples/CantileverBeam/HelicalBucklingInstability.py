@@ -1,11 +1,8 @@
 """
-Cantilever beam deflection case. This is a test case for the connected rigid robot model. We have two disks connected by a spring, and we apply a force on the second disk to see how the system behaves. The expected behavior is that the second disk will deflect due to the applied force, and the first disk will also move due to the connection between them. We can adjust the spring stiffness and damping coefficients to see how they affect the system's response.
-Used for Benchmarking the connected rigid robot model, and for visualizing the dynamic response of a simple two-disk system under external force and spring connection. This case can also be used to validate the implementation of the spring forces and torques in the ConnectedRigidRobots3D class.
-The analytical solution is provided by the Euler-Bernoulli beam theory for a cantilever beam with a point load at the free end. The deflection can be calculated using the formula:
-delta = (F * L^3) / (3 * E * I)
-where F is the applied force, L is the length of the beam, E is the Young
-
-Benchmarking with Pyelasics example Cantilever beam under nonconservative load of 20 N 
+Vetical oscillation of a cantilever beam under gravity. 
+The beam is modelled as a series of connected rigid disks, with the first disk fixed in space and the rest free to move.
+A downward force is applied to each disk to simulate the effect of gravity, 
+and the resulting oscillations are observed and compared to analytical solutions for validation.
 """
 
 import sys, os
@@ -13,8 +10,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 from robot3d.ConnectedRigidRobot3D import ConnectedRigidRobots3D
 from robot3d.SimulatorConnectedRobot3D import MutiRobotSimulator3D
-from robot3d.RigidRobot3D import RigidRobot3D
-from robot3d.CableDrivenForce import CableDrivenForce, GravityForce
+from robot3d.CableDrivenForce import GravityForce
 import numpy as np
 from robot3d.methods3D import SE3LieAlgebra
 import matplotlib.pyplot as plt
@@ -24,71 +20,115 @@ from BeamGenerator import generate_series_robot_disks, generate_series_connectio
 
 lie3 = SE3LieAlgebra()
 
+def period_detect(time_series, signal_series):
+    """
+    Detect the period of oscillation from the time series and signal series.
+    This is a simple implementation that detects peaks in the signal and calculates the average time between peaks.
+    """
+    from scipy.signal import find_peaks
+
+    peaks, _ = find_peaks(signal_series)
+    if len(peaks) < 2:
+        return None  # Not enough peaks to determine period
+    peak_times = time_series[peaks]
+    periods = np.diff(peak_times)
+    average_period = np.mean(periods)
+    return average_period
+
+def amplitude_detect(time_series, signal_series):
+    """
+    Detect the amplitude of oscillation as half the peak-to-peak distance:
+    average of the maxima minus average of the minima, divided by two.
+    This is robust to a constant offset (e.g. a static equilibrium deflection).
+    """
+    from scipy.signal import find_peaks
+
+    peaks, _ = find_peaks(signal_series)
+    troughs, _ = find_peaks(-signal_series)
+    if len(peaks) == 0 or len(troughs) == 0:
+        return None  # No peaks/troughs detected
+
+    peak_to_peak = np.mean(signal_series[peaks]) - np.mean(signal_series[troughs])
+    return peak_to_peak / 2
+
 if __name__ == "__main__":
 
-    F = 3 # N total load
-    persistence_time = 200 # s, time duration for which the load is applied
-    width = 0.01  # m
-    
 # -------------------- Initialization of the cantilever beam system --------------
 
-    F = 20 # N total load
+    n_elements = 100
+
+    mass_p = 100 # kg 
+    mass_rod = 1 # kg
+    E_module = 10 * 1e6  # Pa
+    density = 1000  # kg/m^3
+
+    G_module = (2/3) * E_module  # Pa
+    total_length = 1.0  # m
+    cross_section_area = mass_rod / (total_length * density)  # m^2, cross-sectional area of the beam
+
+    radius = np.sqrt(cross_section_area / np.pi)  # m, radius of the circular cross-section
+    print(f"Calculated radius of the beam's circular cross-section: {radius:.4f} m")
+    print(f"Aspect ratio (length/radius): {total_length/ n_elements / radius:.2f}")
+    I_x = (1/4) * np.pi * radius**4  # m^4, moment of inertia for a circular cross-section
+    I_y = I_x  # m^4
+    I_z = I_x + I_y  # m^4, polar moment of inertia
+
 
     persistence_time = 200 # s, time duration for which the load is applied
-    width = 0.01  # m
-    base_area = width * width  # m^2
-    
-    n_elements = 25
-    load = F / (n_elements * 20) # Why / 20 ? TODO: Why the Pyelasica mutipley load by np.mass[i]
-    E_module = 1.2 * 1e7  # Pa
-    poisson_ratio = 0 
-    G_module = E_module / (2 * (1 + poisson_ratio)) # Pa
-    total_length = 0.5  # m
-    I_x = 0.01**4 / 12  # m^4, moment of inertia for a circular cross-section
-    I_y = 0.01**4 / 12  # m^4
-    I_z = I_x + I_y  # m^4, polar moment of inertia for a circular cross-section
+    g = 9.81 # m/s^2
 
-    density = 1000  # kg/m^3
+    k = (E_module * cross_section_area / total_length)
+
+    analytical_period = 2 * np.pi * np.sqrt((mass_p + mass_rod/3)/k)
+    analytical_amplitude = g * (mass_p + mass_rod/2) / k
+
+    print(f"Analytical period of oscillation: {analytical_period:.4f} s")
+    print(f"Analytical amplitude of oscillation: {analytical_amplitude:.4f} m")
+
     time_step = 0.0001  # s
-    duration = 0.04 # s
+    #time_step = analytical_period / 1e6
+    duration = 2 # s
 
-    print("I",I_x)
-    print(load)
-    print("density",density)
-    print("base_area",base_area)
-    print("width",width)
 
-    damping_spring = np.array([1.0, 1.0, 1.0])  * 0
-    damping_tortional_spring = np.array([1.0, 1.0, 1.0]) * 0
-    S_modifier = 1.0
+    damping_spring = np.array([1.0, 1.0, 1.0])  * 1.5 * 0 
+    damping_tortional_spring = np.array([1.0, 1.0, 1.0]) * 0.04 * 0
+
     ramp_up_time = 0.001  # s, time duration for ramping up the load
-    stepper_type = 'position_verlet'  # 'euler', 'velocity_verlet', or 'position_verlet'
+    stepper_type = "explicit_euler"  # "Euler" or "RK4"
+    stepper_type = "position_verlet"  # "Euler", "RK4", or "position_verlet"
+
 
 # ---------------------------------------- End ---------------------------------
 
-    total_volume = 0.01 **2 * total_length  # m^3, volume of the beam
+
+
+
+    total_volume = cross_section_area * total_length  # m^3, volume of the beam
     total_mass = density * total_volume  # kg
 
     segment_mass = total_mass / n_elements
     segment_length = total_length / n_elements
-    cross_section_area = 0.01 **2  # m^2, cross-sectional area of the beam
+    load = segment_mass * g  # N, load applied to each disk to simulate gravity
+    load_p = mass_p * g
+
 
 
     k_spring = np.array([G_module * (4/3) * cross_section_area, 
                          G_module * (4/3) * cross_section_area,
-                         E_module * cross_section_area]) * S_modifier
+                         E_module * cross_section_area])
 
     k_tortional_spring = np.array([
         E_module * I_x, E_module * I_y, G_module * I_z
     ]) 
 
-    I_h = (1/12) * segment_mass * ((0.01)**2 + (0.01)**2)
-    I_w = (1/12) * segment_mass * ((0.01)**2 + segment_length**2)
-    I_d = (1/12) * segment_mass * ((0.01)**2 + segment_length**2)
+    I_w = (1/12) * segment_mass * ( 3 * radius**2 + segment_length**2 )
+    I_d = (1/12) * segment_mass * ( 3 * radius**2 + segment_length**2 )
+    I_h = (1/2) * segment_mass * radius**2
 
 
     moment_inertia = np.array([I_w, I_d, I_h]) 
 
+   
 
     robot_collection = generate_series_robot_disks(
         n_disks = n_elements,
@@ -99,7 +139,7 @@ if __name__ == "__main__":
                                         [0.0, 0.0, -1.0]]),
         mass = segment_mass,
         moment_inertia = moment_inertia,
-        radius = width,
+        radius = radius,
         thickness = 0.025,
         )
 
@@ -119,6 +159,14 @@ if __name__ == "__main__":
         duration=duration,
         stepper = stepper_type,
         control_logic = None)
+    
+    
+    tip_robot = cantilever_beam.robots[-1]
+    tip_inertia = np.diag(tip_robot.mass_matrix)[3:]
+    tip_diag = np.array([mass_p, mass_p, mass_p, *tip_inertia])
+    tip_robot.mass_matrix = np.diag(tip_diag)
+    tip_robot.mass_matrix_inv = np.diag(1.0 / tip_diag)
+    tip_robot.momentum = tip_robot.mass_matrix @ lie3.vee(tip_robot.velocity_matrix)
 
     simulator_beam.attach(cantilever_beam)
 
@@ -134,7 +182,10 @@ if __name__ == "__main__":
             current_load = 0.0
 
         for i in range(n_elements):
-            simulator_beam.connected_robot.robots[i].control_input = np.array([0.0, current_load, 0.0, 0.0, 0.0, 0.0])
+            if i == n_elements - 1:  # Apply the load to the last disk (tip of the beam)
+                simulator_beam.connected_robot.robots[i].control_input = np.array([0.0, 0.0, -current_load - load_p, 0.0, 0.0, 0.0])
+            else:   
+                simulator_beam.connected_robot.robots[i].control_input = np.array([0.0, 0.0, -load, 0.0, 0.0, 0.0])
 
         simulator_beam.multi_robots_step()
         simulator_beam.multi_robot_record()
@@ -143,7 +194,6 @@ if __name__ == "__main__":
           # Data collection (place holder for now)
     #print(len(simulator_beam.time_collection))
     time_collection = np.array(simulator_beam.time_collection)
-
     posture_collection = np.array(simulator_beam.posture_collection)
     orientation_collection = np.array(simulator_beam.orientation_collection)
     force_collection = np.array(simulator_beam.force_collection)
@@ -151,50 +201,55 @@ if __name__ == "__main__":
     shear_internal_couple_collection = np.array(simulator_beam.shear_internal_couple_collection)
     tau_x_base_collection = np.array(simulator_beam.tau_x_base_collection)
     strain_local_collection = np.array(simulator_beam.strain_local_collection)
-    damping_couple_collection = np.array(simulator_beam.damping_couple_collection)
 
 
-    y_tip_collection = posture_collection[:, -1, 1, 3]  # Extract the y-position of the tip disk over time
 
-    x_position_collection = posture_collection[-1, :, 1, 3] # The x direction is actually the z direction
-    y_position_collection = posture_collection[-1, :, 2, 3]  # Extract the y-position of the tip disk over time
+   
+    simulation_period = period_detect(time_collection, posture_collection[:, -1, 2, 3])
+    simulation_amplitude = amplitude_detect(time_collection, posture_collection[:, -1, 2, 3] - total_length)
+    analytical_period = 2 * np.pi * np.sqrt((mass_p + mass_rod/3)/k)
+    analytical_amplitude = g * (mass_p + mass_rod/2) / k
+    print(f"Detected period of oscillation from simulation: {simulation_period:.4f} s")
+    print(f"Detected amplitude of oscillation from simulation: {simulation_amplitude:.4f} m")
+   
+    
 
 
-    analytical_position = np.load(os.path.join(os.path.dirname(__file__), "position_collection.npy"))
+    z_tip_collection = posture_collection[:, -1, 2, 3] - posture_collection[0, -1, 2, 3]  # Extract the z-position of the tip disk over time
+   
+    star_delta_L = g * (mass_p + mass_rod/2) / k  # Analytical solution for the static deflection of the cantilever beam under the applied load
+    star_T = 2 * np.pi * np.sqrt((mass_p + mass_rod/3)/k) #Analytical solution for the period of oscillation of the cantilever beam under the applied load
+    y_axis_value = z_tip_collection / star_delta_L
+    x_axis_value = time_collection / star_T
+
+    y_analytical =  (1 + np.sin(2 * np.pi * time_collection / star_T - (np.pi / 2))) 
+
     plt.figure()
-    plt.plot(x_position_collection, y_position_collection + (total_length / n_elements), label = "simulation result")
-    plt.plot(analytical_position[0], analytical_position[1], label = "analytical solution")
-    plt.xlabel("X-Position (m)")
-    plt.ylabel("Y-Position (m)")
-    plt.title("Timoshenko Beam Configuration")
+    plt.plot(x_axis_value, y_axis_value, label = "simulation result")
+    plt.plot(x_axis_value, y_analytical, label = "analytical solution", color='black', linestyle='dashed')
+    plt.xlabel("Time (s)")
+    plt.ylabel("Z-Position (m)")
+    plt.title("Vertical Oscillation of Cantilever Beam Tip Under Gravity")
     plt.legend()
     plt.grid()
     plt.show()
 
-    # ---------------- Plot 2 ----------------
-    plt.figure()
-    plt.plot(time_collection, -y_tip_collection, label="Tip Y-Position (Simulation)")
-    plt.xlabel("Time (s)")
-    plt.ylabel("Y-Position (m)")
-    plt.title("Plot 2: Tip Y-Position Over Time")
-    plt.grid(True)
-    plt.show()
+ 
 
 
-
-
+    """
     plt.plot(time_collection, bending_internal_couple_collection[:,0,0], label="Bending Internal Couple")
     plt.plot(time_collection, shear_internal_couple_collection[:,0,0], label="Shear Internal Couple")
     plt.plot(time_collection, tau_x_base_collection[:,0], label="Tau_x Base")
     plt.plot(time_collection, force_collection[:,0,3], label="Total Tau 0")
-    plt.plot(time_collection, strain_local_collection[:,0,1], label="strain_local_collection")
-    plt.plot(time_collection, damping_couple_collection[:,0], label="Damping Couple 0")
+    plt.plot(time_collection, strain_local_collection[:,0,1], label="Total Tau 1")
     plt.xlabel("Time (s)")
     plt.ylabel("Internal Couple (N·m)")
     plt.title("Internal Couples on the First Disk")
     plt.legend()
     plt.grid()
     plt.show()
+    """
 
 
     #print("force_colleciton", force_collection)
@@ -261,7 +316,7 @@ if __name__ == "__main__":
 
     
     # ── 3-D animation ────────────────────────────────────────────────────────
-
+    """
     animate_slender_robot(
         time_collection   = time_collection,
         posture_collection= posture_collection,
@@ -275,7 +330,7 @@ if __name__ == "__main__":
         view_pitch        = 0.0,    # degrees — camera elevation above horizontal
         view_roll         = 0.0,     # degrees — roll around the line of sight
     )
-
+    """
     
 
 

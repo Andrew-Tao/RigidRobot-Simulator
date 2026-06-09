@@ -34,6 +34,7 @@ class ConnectedRigidRobots3D:
         self.bending_internal_couple = np.zeros(3)
         self.shear_internal_couple = np.zeros(3)
         self.tau_x_base = 0.0
+        self.damping_couple = np.zeros(3)
         self.strain_local = np.zeros(3)
         self.force = np.zeros((len(robots), 6)) # Collection of the force for each individual robot #TODO: Use this
         self.base_robot = self.generate_base_robot(first_robot = robots[0]) # This is an imagine robot which represent the fixed origin point
@@ -42,7 +43,7 @@ class ConnectedRigidRobots3D:
         connection = self.connection_map[robot_index]
         number_of_connection = len(connection)
         total_force = np.zeros(6)
-
+                    
         for i in range(number_of_connection):
             if not connection[i].to_base:
 
@@ -155,14 +156,16 @@ class ConnectedRigidRobots3D:
 
     
         front_direction_unit_vector =  np.array([0.0, 0.0, 1.0])
-        shear_stretch_internal_couple =  spring_original_length * np.cross(front_direction_unit_vector, linear_spring_force_local)
-        if not is_upon_anchor_disk: shear_stretch_internal_couple = np.zeros(3)
+        shear_stretch_internal_couple =  spring_original_length * np.cross(front_direction_unit_vector, linear_spring_force_local) 
+        if robot_index == len(self.robots) - 1: shear_stretch_internal_couple = np.zeros(3)
+        elif (not is_upon_anchor_disk) : shear_stretch_internal_couple = np.zeros(3)
         tau_x, tau_y, tau_z = bend_twist_internal_couple + shear_stretch_internal_couple - torque_spring_damping_coefficient * relative_omega
 
         total_force_local = np.array([f_x, f_y, f_z, tau_x, tau_y, tau_z])
         if robot_index == 5 and is_upon_anchor_disk:
             self.bending_internal_couple = bend_twist_internal_couple
             self.shear_internal_couple = shear_stretch_internal_couple
+            self.damping_couple = - torque_spring_damping_coefficient * relative_omega
             self.tau_x_base = tau_x
             self.strain_local = strain_local
 

@@ -43,6 +43,7 @@ class MutiRobotSimulator3D():
         self.shear_internal_couple_collection = []
         self.tau_x_base_collection = []
         self.strain_local_collection = []
+        self.damping_couple_collection = []
 
 
         self.external_force_list = [] # Collection of External Forces
@@ -141,6 +142,7 @@ class MutiRobotSimulator3D():
         shear_internal_couple_frame = []
         tau_x_base_frame = []
         strain_local_frame = []
+        damping_couple_frame = []
 
        
         for i in range(len(self.connected_robot.robots)):
@@ -154,6 +156,7 @@ class MutiRobotSimulator3D():
             shear_internal_couple_frame.append(self.connected_robot.shear_internal_couple.copy())
             tau_x_base_frame.append(self.connected_robot.tau_x_base)
             strain_local_frame.append(self.connected_robot.strain_local.copy())
+            damping_couple_frame.append(self.connected_robot.damping_couple.copy())
 
 
         posture_frame = np.array(posture_frame)
@@ -174,6 +177,7 @@ class MutiRobotSimulator3D():
         self.shear_internal_couple_collection.append(shear_internal_couple_frame)
         self.tau_x_base_collection.append(tau_x_base_frame)
         self.strain_local_collection.append(strain_local_frame)
+        self.damping_couple_collection.append(damping_couple_frame)
 
         if self._pbar is not None:
             current_pct = int(len(self.posture_collection) / self._total_steps * 100)

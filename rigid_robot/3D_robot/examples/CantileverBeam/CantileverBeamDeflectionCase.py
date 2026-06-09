@@ -55,7 +55,7 @@ if __name__ == "__main__":
     width = 0.01  # m
     base_area = width * width  # m^2
     
-    n_elements = 100
+    n_elements = 25
     load = F / (n_elements * 20) # Why / 20 ? TODO: Why the Pyelasica mutipley load by np.mass[i]
     E_module = 1.2 * 1e7  # Pa
     poisson_ratio = 0 
@@ -66,8 +66,8 @@ if __name__ == "__main__":
     I_z = I_x + I_y  # m^4, polar moment of inertia for a circular cross-section
 
     density = 1000  # kg/m^3
-    time_step = 0.00004 # s
-    duration = 0.05 # s
+    time_step = 0.00016 # s
+    duration = 0.0025 # s
 
     print("I",I_x)
     print(load)
@@ -300,7 +300,7 @@ if __name__ == "__main__":
         output_path       = 'slender_robot_simulation.mp4',  # falls back to .gif if ffmpeg missing
         fps               = 20,
         force_scale       = 0.5,
-        skip_frames       = 5,
+        skip_frames       = 1,
         view_yaw          = 0.0,   # degrees — rotate camera around world Z
         view_pitch        = 0.0,    # degrees — camera elevation above horizontal
         view_roll         = 0.0,     # degrees — roll around the line of sight

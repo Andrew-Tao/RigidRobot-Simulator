@@ -155,8 +155,9 @@ class MutiRobotSimulator3D():
         # TODO: This is just a test for a boundary condition
         # Apply boundary condition that the last robot always has the same orientation as the robot right before it for slender robot
         if n > 1:
-            self.connected_robot.robots[-1].orientation = self.connected_robot.robots[-2].orientation.copy()
-            print("I excuted the boundary condition")
+            pass
+            #self.connected_robot.robots[-1].orientation = self.connected_robot.robots[-2].orientation.copy()
+            #print("I excuted the boundary condition")
     
         self.time_collection.append(self.current_time)
 

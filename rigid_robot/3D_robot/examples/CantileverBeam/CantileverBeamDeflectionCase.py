@@ -43,10 +43,6 @@ def max_bending_angle_at_frame(posture_frame: np.ndarray) -> float:
 
 if __name__ == "__main__":
 
-    F = 3 # N total load
-    persistence_time = 200 # s, time duration for which the load is applied
-    width = 0.01  # m
-    
 # -------------------- Initialization of the cantilever beam system --------------
 
     F = 20 # N total load
@@ -66,8 +62,8 @@ if __name__ == "__main__":
     I_z = I_x + I_y  # m^4, polar moment of inertia for a circular cross-section
 
     density = 1000  # kg/m^3
-    time_step = 0.00016 # s
-    duration = 0.003 # s
+    time_step = 0.00011 # s
+    duration = 1 # s
 
     print("I",I_x)
     print(load)

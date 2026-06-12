@@ -41,6 +41,7 @@ class CableDrivenForce:
                     unit_anchor_vector_local_after = np.zeros(3)
 
                 linear_force_before = self.control_input(time)[cable_index] * unit_anchor_vector_local_before
+                #print("disk",n,"before",linear_force_before, "a")
                 linear_force_after  = self.control_input(time)[cable_index] * unit_anchor_vector_local_after
                 linear_total_on_single_robot = linear_force_before + linear_force_after
 

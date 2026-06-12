@@ -149,22 +149,34 @@ if __name__ == "__main__":
     )
 
     simulator_beam = MutiRobotSimulator3D(
-        time_step=0.01,
-        duration=0.09,
-        stepper = 'explicit_euler',
+        time_step=0.001,
+        duration=1,
+        stepper = 'position_verlet',
         control_logic = None)
 
     simulator_beam.attach(cantilever_beam)
 
     gravity = GravityForce()
-    #simulator_beam.add_external_force(gravity)
+
+    r_cable = disk_radius
+    hole_offset = np.array([
+        [ r_cable,                      0.0,                     0.0],  # cable 1 at   0°
+        [-r_cable / 2,  r_cable * np.sqrt(3) / 2,               0.0],  # cable 2 at 120°
+        [-r_cable / 2, -r_cable * np.sqrt(3) / 2,               0.0],  # cable 3 at 240°
+    ])
+
+    def cable_control(time):
+        return np.array([5.0, 0.0, 0.0])  # cable 1 active at 0.1 N, cables 2 & 3 slack
+
+    cable_force = CableDrivenForce(control_input=cable_control, hole_offset=hole_offset)
+    simulator_beam.add_external_force(gravity)
+    simulator_beam.add_external_force(cable_force)
 
 
     for i in range(n_elements):
-        simulator_beam.connected_robot.robots[i].control_input = np.array([0.0,0.0001,0.0,0.0,0.0,0.0])
+        simulator_beam.connected_robot.robots[i].control_input = np.array([0.0,0.0,0.0,0.0,0.0,0.0])
   
    
-
     while simulator_beam.run():
         simulator_beam.multi_robots_step()
         simulator_beam.multi_robot_record()
@@ -243,13 +255,13 @@ if __name__ == "__main__":
     animate_slender_robot(
         time_collection   = time_collection,
         posture_collection= posture_collection,
-        force_collection  = force_collection,
+        force_collection  = None,
         disk_radius       = disk_radius,
         output_path       = 'slender_robot_simulation.mp4',  # falls back to .gif if ffmpeg missing
         fps               = 20,
         force_scale       = 0.5,
         skip_frames       = 5,
-        view_yaw          = 0.0,   # degrees — rotate camera around world Z
+        view_yaw          = 90.0,   # degrees — rotate camera around world Z
         view_pitch        = 0.0,    # degrees — camera elevation above horizontal
         view_roll         = 0.0,     # degrees — roll around the line of sight
     )

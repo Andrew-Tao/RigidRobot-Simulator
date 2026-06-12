@@ -89,6 +89,7 @@ class MutiRobotSimulator3D():
         external_force_k = np.zeros((n, 6))
         for force_type in self.external_force_list:
             external_force_k += force_type.compute_force_collection(self.connected_robot, self.current_time)
+            #print("External_force_k", external_force_k)
         for i in range(n):
             forces_k[i] += external_force_k[i]
 
@@ -108,6 +109,13 @@ class MutiRobotSimulator3D():
             forces_k_half = []
             for i in range(n):
                 forces_k_half.append(self.connected_robot.compute_force_local_total_individual_robot(robot_index=i))
+
+            # Add external forces (gravity, cable, etc.) evaluated at k+1/2 postures
+            external_force_k_half = np.zeros((n, 6))
+            for force_type in self.external_force_list:
+                external_force_k_half += force_type.compute_force_collection(self.connected_robot, self.current_time + self.time_step / 2)
+            for i in range(n):
+                forces_k_half[i] += external_force_k_half[i]
 
             # Phase 3: integrate ALL robots to k+1
             for i in range(n):

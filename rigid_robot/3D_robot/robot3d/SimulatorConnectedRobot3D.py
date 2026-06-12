@@ -76,6 +76,7 @@ class MutiRobotSimulator3D():
         # Gather all forces and states at time k before updating any robot
         states_k = []
         forces_k = []
+        posture_k_half_collection = np.zeros((n, 4, 4))
 
         # ------------Add Internal forces, adding to forces_k---------------
 
@@ -93,39 +94,70 @@ class MutiRobotSimulator3D():
 
         self._last_forces_k = forces_k
 
-        # Now integrate all robots using only time-k states
-        for i in range(n):
-            robot = self.connected_robot.robots[i]
-            momentum_k, posture_k, velocity_k_matrix = states_k[i]
-            force_k = forces_k[i]
 
-            # -------------------Explicit Euler Integration -------------------
-            if self.stepper == 'explicit_euler':
-                posture_kp1 = posture_k @ lie3.exp(velocity_k_matrix * self.time_step)
-                momentum_kp1 = (lie3.exp_adjoint(-velocity_k_matrix*self.time_step) @ momentum_k) + (force_k * self.time_step)
-
-            # -------------------Symplectic Euler Integration -------------------
-            elif self.stepper == 'symplectic_euler':
-                momentum_kp1 = (lie3.exp_adjoint(-velocity_k_matrix*self.time_step) @ momentum_k) + (force_k * self.time_step)
-                velocity_kp1_matrix = lie3.hat(robot.mass_matrix_inv @ momentum_kp1)
-                posture_kp1 = posture_k @ lie3.exp(velocity_kp1_matrix * self.time_step)
-
-            #---------------------Position Verlet Integration----------------------
-            elif self.stepper == 'position_verlet':
+        #---------------------Position Verlet Integration----------------------
+        if self.stepper == 'position_verlet':
+            # Phase 1: advance ALL robots to k+1/2 simultaneously
+            for i in range(n):
+                momentum_k, posture_k, velocity_k_matrix = states_k[i]
                 posture_k_phalf = posture_k @ lie3.exp(velocity_k_matrix * (self.time_step / 2))
-                robot.posture = posture_k_phalf
-                force_k_phalf = self.connected_robot.compute_force_local_total_individual_robot(robot_index=i)
-                momentum_kp1 = (lie3.exp_adjoint(-velocity_k_matrix*self.time_step) @ momentum_k) + (force_k_phalf * self.time_step)
+                self.connected_robot.robots[i].posture = posture_k_phalf
+                posture_k_half_collection[i] = posture_k_phalf
+
+            # Phase 2: compute ALL half-step forces with consistent k+1/2 postures
+            forces_k_half = []
+            for i in range(n):
+                forces_k_half.append(self.connected_robot.compute_force_local_total_individual_robot(robot_index=i))
+
+            # Phase 3: integrate ALL robots to k+1
+            for i in range(n):
+                robot = self.connected_robot.robots[i]
+                momentum_k, posture_k, velocity_k_matrix = states_k[i]
+                posture_k_phalf = posture_k_half_collection[i]
+                force_k_phalf = forces_k_half[i]
+
+                momentum_kp1 = (lie3.exp_adjoint(-velocity_k_matrix * self.time_step) @ momentum_k) + (force_k_phalf * self.time_step)
                 velocity_kp1_matrix = lie3.hat(robot.mass_matrix_inv @ momentum_kp1)
                 posture_kp1 = posture_k_phalf @ lie3.exp(velocity_kp1_matrix * (self.time_step / 2))
+                xi_kp1 = robot.mass_matrix_inv @ momentum_kp1
 
-            xi_kp1 = robot.mass_matrix_inv @ momentum_kp1
+                robot.posture = posture_kp1
+                robot.momentum = momentum_kp1
+                robot.velocity_matrix = lie3.hat(xi_kp1)
+                robot.orientation = rotation_matrix_to_euler_zyx(posture_kp1[:3, :3])
 
-            robot.posture = posture_kp1
-            robot.momentum = momentum_kp1
-            robot.velocity_matrix = lie3.hat(xi_kp1)
-            robot.orientation = rotation_matrix_to_euler_zyx(posture_kp1[:3, :3])
+        else:
+                # Now integrate all robots using only time-k states
+            for i in range(n):
+                robot = self.connected_robot.robots[i]
+                momentum_k, posture_k, velocity_k_matrix = states_k[i]
+                force_k = forces_k[i]
 
+                # -------------------Explicit Euler Integration -------------------
+                if self.stepper == 'explicit_euler':
+                    posture_kp1 = posture_k @ lie3.exp(velocity_k_matrix * self.time_step)
+                    momentum_kp1 = (lie3.exp_adjoint(-velocity_k_matrix*self.time_step) @ momentum_k) + (force_k * self.time_step)
+
+                # -------------------Symplectic Euler Integration -------------------
+                elif self.stepper == 'symplectic_euler':
+                    momentum_kp1 = (lie3.exp_adjoint(-velocity_k_matrix*self.time_step) @ momentum_k) + (force_k * self.time_step)
+                    velocity_kp1_matrix = lie3.hat(robot.mass_matrix_inv @ momentum_kp1)
+                    posture_kp1 = posture_k @ lie3.exp(velocity_kp1_matrix * self.time_step)
+
+            
+                xi_kp1 = robot.mass_matrix_inv @ momentum_kp1
+
+                robot.posture = posture_kp1
+                robot.momentum = momentum_kp1
+                robot.velocity_matrix = lie3.hat(xi_kp1)
+                robot.orientation = rotation_matrix_to_euler_zyx(posture_kp1[:3, :3])
+
+        # TODO: This is just a test for a boundary condition
+        # Apply boundary condition that the last robot always has the same orientation as the robot right before it for slender robot
+        if n > 1:
+            self.connected_robot.robots[-1].orientation = self.connected_robot.robots[-2].orientation.copy()
+            print("I excuted the boundary condition")
+    
         self.time_collection.append(self.current_time)
 
     def multi_robot_record(self):

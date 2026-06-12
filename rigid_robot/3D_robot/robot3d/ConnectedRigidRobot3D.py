@@ -53,12 +53,15 @@ class ConnectedRigidRobots3D:
                 if is_upon_sequence_flag:
                     anchor_robot = self.robots[connection[i].to]
                     who_i_am_robot = self.robots[robot_index]
+                    who_i_am_robot_index = robot_index
                 else:
                     anchor_robot = self.robots[robot_index]
                     who_i_am_robot =  self.robots[connection[i].to]
+                    who_i_am_robot_index = connection[i].to
 
             else:
                 who_i_am_robot = self.base_robot
+                who_i_am_robot_index = -1  # base robot has no index
                 anchor_robot =  self.robots[robot_index]
                 is_upon_sequence_flag = False
 
@@ -82,6 +85,7 @@ class ConnectedRigidRobots3D:
 
             half_cross_section_force = self.compute_single_spring_force(
                 robot = who_i_am_robot,
+                who_i_am_robot_index = who_i_am_robot_index, # For debugging use, this should be the same as robot_index if the connection is correct
                 is_upon_anchor_disk= is_upon_sequence_flag,
                 spring_anchor_point = spring_anchor_point,
                 torque_spring_anchor_orientation= torque_spring_anchor_orientation,
@@ -114,6 +118,7 @@ class ConnectedRigidRobots3D:
     def compute_single_spring_force(
         self,
         robot: RigidRobot3D,
+        who_i_am_robot_index: int,
         is_upon_anchor_disk: bool,
         spring_anchor_point=np.array([0.0, 0.0, 0.0]),
         torque_spring_anchor_orientation = np.array([0.0, 0.0, 0.0]),
@@ -130,10 +135,10 @@ class ConnectedRigidRobots3D:
         ):
 
         # TODO: Write a add_damping method
-        position = robot.posture[:3, 3]
-        orientation_Q = robot.posture[:3, :3]
+        position = robot.posture[:3, 3].copy()
+        orientation_Q = robot.posture[:3, :3].copy()
 
-        v_body = robot.velocity_matrix[:3, 3]   # body-frame linear velocity = R^T * v_world
+        v_body = robot.velocity_matrix[:3, 3]  # body-frame linear velocity = R^T * v_world
         omega_x, omega_y, omega_z   = robot.velocity_matrix[2, 1], robot.velocity_matrix[0, 2], robot.velocity_matrix[1, 0]    # angular velocity
         omega = np.array([omega_x, omega_y, omega_z])
 
@@ -166,7 +171,7 @@ class ConnectedRigidRobots3D:
         tau_x, tau_y, tau_z = bend_twist_internal_couple + shear_stretch_internal_couple - torque_spring_damping_coefficient * relative_omega
 
         total_force_local = np.array([f_x, f_y, f_z, tau_x, tau_y, tau_z])
-        if robot_index == 5 and is_upon_anchor_disk:
+        if True:
             self.bending_internal_couple = bend_twist_internal_couple
             self.shear_internal_couple = shear_stretch_internal_couple
             self.damping_couple = - torque_spring_damping_coefficient * relative_omega
@@ -174,6 +179,7 @@ class ConnectedRigidRobots3D:
             self.strain_local = strain_local
 
             #print("robot_index", robot_index,"\n")
+            #print("who_i_am_robot", who_i_am_robot_index)
             #print("orientation_Q", orientation_Q)
             #print("theta", theta)
             #print("torque_x", tau_x) 

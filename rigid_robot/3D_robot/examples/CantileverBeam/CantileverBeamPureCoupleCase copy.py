@@ -29,16 +29,16 @@ if __name__ == "__main__":
     F = 10 # N total load
     persistence_time = 200 # s, time duration for which the load is applied
     width = 0.01  # m
-    
+
 # -------------------- Initialization of the cantilever beam system --------------
 
-    F = 10 # N total load
+    F = 20 # N total load
 
-    persistence_time = 1000 # s, time duration for which the load is applied
+    persistence_time = 200 # s, time duration for which the load is applied
     width = 0.01  # m
     base_area = width * width  # m^2
     
-    n_elements = 2
+    n_elements = 25
     load = F / (n_elements * 20) # Why / 20 ? TODO: Why the Pyelasica mutipley load by np.mass[i]
     E_module = 1.2 * 1e7  # Pa
     poisson_ratio = 0 
@@ -49,8 +49,8 @@ if __name__ == "__main__":
     I_z = I_x + I_y  # m^4, polar moment of inertia for a circular cross-section
 
     density = 1000  # kg/m^3
-    time_step = 0.0001  # s
-    duration = 5 # s
+    time_step = 0.00018 # s
+    duration = 0.1 # s
 
     print("I",I_x)
     print(load)
@@ -61,11 +61,12 @@ if __name__ == "__main__":
     damping_spring = np.array([1.0, 1.0, 1.0])  * 0
     damping_tortional_spring = np.array([1.0, 1.0, 1.0]) * 0
     S_modifier = 1.0
-    ramp_up_time = 5 # s, time duration for ramping up the load
+    ramp_up_time = 0.001  # s, time duration for ramping up the load
     stepper_type = 'position_verlet'  # 'euler', 'velocity_verlet', or 'position_verlet'
-    initial_z_angle_deg = 10.0  # degrees, initial Z-angle offset on the last disk for free response
+    initial_z_angle_deg = 0.0  # degrees, initial angle of the beam in the z direction
 
 # ---------------------------------------- End ---------------------------------
+
 
     total_volume = 0.01 **2 * total_length  # m^3, volume of the beam
     total_mass = density * total_volume  # kg

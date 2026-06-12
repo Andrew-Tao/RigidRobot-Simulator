@@ -67,7 +67,7 @@ if __name__ == "__main__":
 
     density = 1000  # kg/m^3
     time_step = 0.00016 # s
-    duration = 0.0025 # s
+    duration = 0.003 # s
 
     print("I",I_x)
     print(load)
@@ -75,8 +75,8 @@ if __name__ == "__main__":
     print("base_area",base_area)
     print("width",width)
 
-    damping_spring = np.array([1.0, 1.0, 1.0])  * 0
-    damping_tortional_spring = np.array([1.0, 1.0, 1.0]) * 0
+    damping_spring = np.array([1.0, 1.0, 1.0])  * 0.0
+    damping_tortional_spring = np.array([1.0, 1.0, 1.0]) * 0.0
     S_modifier = 1.0
     ramp_up_time = 0.001  # s, time duration for ramping up the load
     stepper_type = 'position_verlet'  # 'euler', 'velocity_verlet', or 'position_verlet'

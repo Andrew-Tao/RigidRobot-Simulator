@@ -3,9 +3,7 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 import numpy as np
-from robot3d.methods3D import SE3LieAlgebra
-from robot3d.SimulatorConnectedRobot3D import MutiRobotSimulator3D
-from robot3d.RigidRobot3D import RigidRobot3D
+from robot3d.robot.RigidRobot3D import RigidRobot3D
 
 def generate_series_robot_disks(
     n_disks, 

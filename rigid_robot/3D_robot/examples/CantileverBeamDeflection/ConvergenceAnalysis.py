@@ -10,14 +10,13 @@ where F is the applied force, L is the length of the beam, E is the Young
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
-from robot3d.ConnectedRigidRobot3D import ConnectedRigidRobots3D
-from robot3d.SimulatorConnectedRobot3D import MutiRobotSimulator3D
-from robot3d.RigidRobot3D import RigidRobot3D
-from robot3d.CableDrivenForce import CableDrivenForce, GravityForce
+
 import numpy as np
-from robot3d.methods3D import SE3LieAlgebra
 import matplotlib.pyplot as plt
-from scipy.spatial.transform import Rotation as R
+from robot3d.robot.ConnectedRigidRobot3D import ConnectedRigidRobots3D
+from robot3d.stepper.SimulatorConnectedRobot3D import MutiRobotSimulator3D
+from robot3d.robot.RigidRobot3D import RigidRobot3D
+from robot3d.methods3D import SE3LieAlgebra
 
 lie3 = SE3LieAlgebra()
 

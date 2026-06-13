@@ -1,8 +1,8 @@
 import numpy as np
-from .methods3D import SE3LieAlgebra
+from ..methods3D import SE3LieAlgebra
 import matplotlib.pyplot as plt
 from scipy.spatial.transform import Rotation as R
-from .RigidRobot3D import ConnectedRigidRobots3D
+from ..robot.RigidRobot3D import ConnectedRigidRobots3D
 from tqdm import tqdm
 
 lie3 = SE3LieAlgebra()

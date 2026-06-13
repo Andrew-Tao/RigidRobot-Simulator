@@ -1,4 +1,4 @@
-from .methods3D import SE3LieAlgebra, rpy_to_Q, log_SO3
+from ..methods3D import SE3LieAlgebra, rpy_to_Q, log_SO3
 import numpy as np
 from dataclasses import dataclass
 from .RigidRobot3D import RigidRobot3D

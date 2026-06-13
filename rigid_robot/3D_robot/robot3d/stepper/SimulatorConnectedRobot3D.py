@@ -4,11 +4,11 @@ import sys, os
 # When imported as part of the package the relative imports work as-is.
 if __package__ is None or __package__ == "":
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    __package__ = "robot3d"
+    __package__ = "robot3d.stepper"
 
 import numpy as np
-from .methods3D import SE3LieAlgebra, rotation_matrix_to_euler_zyx
-from .ConnectedRigidRobot3D import ConnectedRigidRobots3D
+from ..methods3D import SE3LieAlgebra, rotation_matrix_to_euler_zyx
+from ..robot.ConnectedRigidRobot3D import ConnectedRigidRobots3D
 from tqdm import tqdm
 
 lie3 = SE3LieAlgebra()

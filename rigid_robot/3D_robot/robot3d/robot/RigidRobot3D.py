@@ -1,4 +1,4 @@
-from .methods3D import SE3LieAlgebra, rpy_to_Q, rotation_matrix_to_euler_zyx
+from ..methods3D import SE3LieAlgebra, rpy_to_Q, rotation_matrix_to_euler_zyx
 import numpy as np
 from dataclasses import dataclass
 

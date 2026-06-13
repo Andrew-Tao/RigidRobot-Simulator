@@ -5,7 +5,6 @@ from .RigidRobot3D import RigidRobot3D
 
 lie3 = SE3LieAlgebra()
 
-
 @dataclass
 class Connection:
     to: int
@@ -68,6 +67,7 @@ class ConnectedRigidRobots3D:
             spring_anchor_point = anchor_robot.posture[:3, 3]
             torque_spring_anchor_orientation = anchor_robot.orientation
             torque_spring_anchor_Q = anchor_robot.posture[:3, :3]
+
             # Convert anchor body velocity to world frame: v_world = R @ v_body
             anchor_Q = anchor_robot.posture[:3, :3]
             anchor_velocity_world = anchor_Q @ anchor_robot.velocity_matrix[:3, 3]
@@ -106,8 +106,6 @@ class ConnectedRigidRobots3D:
                     -R_transform @ half_cross_section_force[:3],
                     -R_transform @ half_cross_section_force[3:]
                 ])
-
-            #print("half_section_force", half_cross_section_force)
 
             total_force += half_cross_section_force
 
@@ -150,11 +148,6 @@ class ConnectedRigidRobots3D:
         # Damping uses relative velocity: v_self_world - v_anchor_world, expressed in body frame
         relative_velocity_body = v_body - orientation_Q.T @ anchor_velocity_world
         linear_spring_force_local = strain_local * spring_stiffness
-
-        # Bondary Condition for the last robot free boundary condition TODO: Clean this
-        #if test_flag == len(self.robots) - 1: 
-        #    linear_spring_force_local = 2 * linear_spring_force_local 
-
         f_x, f_y, f_z = linear_spring_force_local - spring_damping_coefficient * relative_velocity_body
 
         #---------------------------------Bending & Twisting ------------------------------
@@ -163,7 +156,6 @@ class ConnectedRigidRobots3D:
         relative_omega = omega - orientation_Q.T @ anchor_angular_velocity_world
         bend_twist_internal_couple = - (torque_spring_stiffness/spring_original_length) * theta
 
-    
         front_direction_unit_vector =  np.array([0.0, 0.0, 1.0])
         shear_stretch_internal_couple =  spring_original_length * np.cross(front_direction_unit_vector, linear_spring_force_local) 
         if robot_index == len(self.robots) - 1: shear_stretch_internal_couple = np.zeros(3)
@@ -171,6 +163,8 @@ class ConnectedRigidRobots3D:
         tau_x, tau_y, tau_z = bend_twist_internal_couple + shear_stretch_internal_couple - torque_spring_damping_coefficient * relative_omega
 
         total_force_local = np.array([f_x, f_y, f_z, tau_x, tau_y, tau_z])
+
+        #TODO Used for Debugging 
         if robot_index == 0:
             self.bending_internal_couple = bend_twist_internal_couple
             self.shear_internal_couple = shear_stretch_internal_couple
@@ -178,33 +172,7 @@ class ConnectedRigidRobots3D:
             self.tau_x_base = tau_x
             self.strain_local = strain_local
 
-            #print("robot_index", robot_index,"\n")
-            #print("who_i_am_robot", who_i_am_robot_index)
-            #print("orientation_Q", orientation_Q)
-            #print("theta", theta)
-            #print("torque_x", tau_x) 
-            #print("bend_twist_internal_couple", bend_twist_internal_couple)
-            #print("shear_stretch_internal_couple", shear_stretch_internal_couple)
-            #print(" torque_spring_damping_coefficient * relative_omega", torque_spring_damping_coefficient * relative_omega)
-            #print({"torque_spring_stiffness": torque_spring_stiffness, "spring_original_length": spring_original_length})
-            
-            #print("spring_anchor_point",  spring_anchor_point)
-            #print("is_upon",is_upon_anchor_disk)
-           
-            #print("position",position)
-            #D = position - spring_anchor_point
-            #print(f"{D[2]:.20f}")
-            #print("strain_local",strain_local)
-            #print("original_front", original_front_direction_vector )
-            #print("linear_spring_force_local", linear_spring_force_local)
-            #print("Spring_anchor_point_global_relative", relative_spring_anchor_point_global)
-            #print("total_force", total_force_local)
-            #print("shear_induced_couple", shear_stretch_internal_couple)
-        #print("\n")
-
         return total_force_local
-
-
 
     def add_connection(self,
         index_pairs:tuple, # If to_base is true, the second elment is ignored

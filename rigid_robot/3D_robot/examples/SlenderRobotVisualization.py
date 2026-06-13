@@ -14,7 +14,6 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 — registers 3d projection
 
-
 # ── helpers ─────────────────────────────────────────────────────────────────
 
 def _disk_circle_world(posture: np.ndarray, radius: float, n_pts: int = 36) -> np.ndarray:

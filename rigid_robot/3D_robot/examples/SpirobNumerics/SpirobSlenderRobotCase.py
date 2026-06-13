@@ -166,7 +166,7 @@ if __name__ == "__main__":
     ])
 
     def cable_control(time):
-        return np.array([5.0, 0.0, 0.0])  # cable 1 active at 0.1 N, cables 2 & 3 slack
+        return np.array([0.5, 0.0, 0.0])  # cable 1 active at 0.1 N, cables 2 & 3 slack
 
     cable_force = CableDrivenForce(control_input=cable_control, hole_offset=hole_offset)
     simulator_beam.add_external_force(gravity)

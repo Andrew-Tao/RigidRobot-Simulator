@@ -110,8 +110,8 @@ if __name__ == "__main__":
 
     moment_inertia = np.array([Ixx, Iyy, Izz])
 
-    E_module = 5 * 1e6  #Pa
-    G_module = 6 * 1e6  #Pa
+    E_module = 5 * 1e6 * 1  #Pa
+    G_module = 6 * 1e6 * 1.2  #Pa
 
     k_s = np.array([alpha_c * G_module,alpha_c * G_module, E_module]) * area_spine 
     k_t = np.array([E_module * Ix , E_module*Ix, G_module * Ixy]) 
@@ -158,7 +158,7 @@ if __name__ == "__main__":
 
     gravity = GravityForce()
 
-    r_cable = disk_radius
+    r_cable = disk_radius * 0.8
     hole_offset = np.array([
         [ r_cable,                      0.0,                     0.0],  # cable 1 at   0°
         [-r_cable / 2,  r_cable * np.sqrt(3) / 2,               0.0],  # cable 2 at 120°
@@ -166,7 +166,7 @@ if __name__ == "__main__":
     ])
 
     def cable_control(time):
-        return np.array([5.0, 0.0, 0.0])  # cable 1 active at 0.1 N, cables 2 & 3 slack
+        return np.array([1.0, 0.0, 0.0])  # cable 1 active at 0.1 N, cables 2 & 3 slack
 
     cable_force = CableDrivenForce(control_input=cable_control, hole_offset=hole_offset)
     simulator_beam.add_external_force(gravity)

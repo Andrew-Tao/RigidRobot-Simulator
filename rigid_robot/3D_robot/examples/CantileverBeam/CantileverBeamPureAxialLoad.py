@@ -31,7 +31,6 @@ if __name__ == "__main__":
     width = 0.01  # m
     
 # -------------------- Initialization of the cantilever beam system --------------
-
     F = 1000 # N total load
 
     persistence_time = 1000 # s, time duration for which the load is applied
@@ -64,7 +63,7 @@ if __name__ == "__main__":
     ramp_up_time = 0.001  # s, time duration for ramping up the load
     stepper_type = 'position_verlet'  # 'euler', 'velocity_verlet', or 'position_verlet'
     initial_z_angle_deg = 10.0  # degrees, initial Z-angle offset on the last disk for free response
-
+    
 # ---------------------------------------- End ---------------------------------
 
     total_volume = 0.01 **2 * total_length  # m^3, volume of the beam
@@ -107,8 +106,6 @@ if __name__ == "__main__":
         radius = width,
         thickness = 0.025,
         )
-    
-    
 
     cantilever_beam = ConnectedRigidRobots3D(robots=robot_collection)
 
@@ -120,8 +117,6 @@ if __name__ == "__main__":
         damping_tortional_spring,
         spring_original_length = segment_length,
     )
-
-
 
     print(cantilever_beam.robots[0].orientation)
     print(cantilever_beam.robots[1].orientation)

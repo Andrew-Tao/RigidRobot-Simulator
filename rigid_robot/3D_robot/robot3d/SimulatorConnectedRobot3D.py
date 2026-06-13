@@ -152,7 +152,6 @@ class MutiRobotSimulator3D():
                     velocity_kp1_matrix = lie3.hat(robot.mass_matrix_inv @ momentum_kp1)
                     posture_kp1 = posture_k @ lie3.exp(velocity_kp1_matrix * self.time_step)
 
-            
                 xi_kp1 = robot.mass_matrix_inv @ momentum_kp1
 
                 robot.posture = posture_kp1
@@ -160,13 +159,6 @@ class MutiRobotSimulator3D():
                 robot.velocity_matrix = lie3.hat(xi_kp1)
                 robot.orientation = rotation_matrix_to_euler_zyx(posture_kp1[:3, :3])
 
-        # TODO: This is just a test for a boundary condition
-        # Apply boundary condition that the last robot always has the same orientation as the robot right before it for slender robot
-        if n > 1:
-            pass
-            #self.connected_robot.robots[-1].orientation = self.connected_robot.robots[-2].orientation.copy()
-            #print("I excuted the boundary condition")
-    
         self.time_collection.append(self.current_time)
 
     def multi_robot_record(self):

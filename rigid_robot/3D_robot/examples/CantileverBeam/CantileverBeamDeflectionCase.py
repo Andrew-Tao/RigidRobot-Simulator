@@ -44,7 +44,6 @@ def max_bending_angle_at_frame(posture_frame: np.ndarray) -> float:
 if __name__ == "__main__":
 
 # -------------------- Initialization of the cantilever beam system --------------
-
     F = 20 # N total load
 
     persistence_time = 200 # s, time duration for which the load is applied
@@ -76,7 +75,6 @@ if __name__ == "__main__":
     S_modifier = 1.0
     ramp_up_time = 0.001  # s, time duration for ramping up the load
     stepper_type = 'position_verlet'  # 'euler', 'velocity_verlet', or 'position_verlet'
-
 # ---------------------------------------- End ---------------------------------
 
     total_volume = 0.01 **2 * total_length  # m^3, volume of the beam
@@ -192,9 +190,6 @@ if __name__ == "__main__":
     plt.title("Plot 2: Tip Y-Position Over Time")
     plt.grid(True)
     plt.show()
-
-
-
 
     plt.plot(time_collection, bending_internal_couple_collection[:,0,0], label="Bending Internal Couple")
     plt.plot(time_collection, shear_internal_couple_collection[:,0,0], label="Shear Internal Couple")

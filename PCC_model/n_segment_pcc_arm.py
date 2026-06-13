@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.optimize import differential_evolution, minimize
 
-from visualization_3d import plot_two_segment_arm_3d_interactive, plot_two_segment_arm_3d, plot_sigma_workspace_3d
+from PCC_model.visualization_3d import plot_two_segment_arm_3d_interactive, plot_two_segment_arm_3d, plot_sigma_workspace_3d
 
 
 EPS = 1e-9

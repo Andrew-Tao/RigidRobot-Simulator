@@ -20,7 +20,7 @@ class RigidRobot3D:
 
         """
         position: (x, y, z) in R^3
-        orientation: (roll, pitch, yaw) in radians
+        orientation: SO3 roation matrix
         mass: scalar mass of the robot
         inertia: (Jx, Jy, Jz) moment of inertia around the center of mass
         linear_velocity: (v_x, v_y, v_z) in R^3
@@ -78,8 +78,7 @@ class RigidRobot3D:
         spring_original_length=0.04
         ):
 
-        
-
+    
         damping_coefficient = 0.1
         position = self.posture[:3, 3]
         orientation_Q = self.posture[:3, :3]

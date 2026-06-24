@@ -41,7 +41,7 @@ def animate_slender_robot(
     posture_collection,
     force_collection=None,
     hole_offset=None,
-    disk_radius: float = 0.03,
+    disk_radius=0.03,
     output_path: str = 'slender_robot.mp4',
     fps: int = 15,
     force_scale: float = 1.0,
@@ -69,8 +69,10 @@ def animate_slender_robot(
         (no rotation applied — consistent with CableDrivenForce convention).
         C is the number of cables (typically 3).
         When provided, cable paths and tension-direction arrows are drawn.
-    disk_radius        : float
-        Disk radius used for rendering circles.
+    disk_radius        : float or array-like (N,)
+        Disk radius used for rendering circles.  Pass a scalar for a uniform
+        robot or a length-N array for a tapered robot where each disk has a
+        different radius.
     output_path        : str
         Destination .mp4 file path.
     fps                : int
@@ -95,19 +97,27 @@ def animate_slender_robot(
     frame_indices = np.arange(0, T, max(1, skip_frames))
     n_frames = len(frame_indices)
 
+    # Support scalar or per-disk radius array
+    disk_radii = (np.full(N, float(disk_radius)) if np.isscalar(disk_radius)
+                  else np.asarray(disk_radius, dtype=float))
+
     disk_colors = _get_colors(N, 'plasma')
     ho = np.asarray(hole_offset, dtype=float) if hole_offset is not None else None
 
     # ── scene bounds ────────────────────────────────────────────────────────
     all_pos = posture_collection[:, :, :3, 3]           # (T, N, 3)
     if ho is not None:
-        # Hole positions: centre + offset, no rotation (matches CableDrivenForce)
-        all_holes = all_pos[:, :, np.newaxis, :] + ho[np.newaxis, np.newaxis, :, :]
+        # ho: (C,3) uniform  →  broadcast to (T,N,C,3)
+        # ho: (N,C,3) per-disk → broadcast to (T,N,C,3)
+        if ho.ndim == 2:
+            all_holes = all_pos[:, :, np.newaxis, :] + ho[np.newaxis, np.newaxis, :, :]
+        else:
+            all_holes = all_pos[:, :, np.newaxis, :] + ho[np.newaxis, :, :, :]
         all_pts = np.concatenate([all_pos.reshape(-1, 3), all_holes.reshape(-1, 3)], axis=0)
     else:
         all_pts = all_pos.reshape(-1, 3)
 
-    pad = max(disk_radius * 4, 0.02)
+    pad = max(disk_radii.max() * 4, 0.02)
     mid = all_pts.mean(axis=0)
     half = max(
         all_pts[:, 0].max() - all_pts[:, 0].min(),
@@ -147,7 +157,7 @@ def animate_slender_robot(
         # Disk rims
         label_step = max(1, N // 10)
         for i in range(N):
-            circle = _disk_circle_world(posture_collection[t_idx, i], disk_radius)
+            circle = _disk_circle_world(posture_collection[t_idx, i], disk_radii[i])
             col = disk_colors[i]
             ax.plot(circle[:, 0], circle[:, 1], circle[:, 2], color=col, lw=2.0)
             ax.scatter(*centers[i], color=col, s=22, zorder=5)
@@ -157,12 +167,15 @@ def animate_slender_robot(
 
         # Cable paths and tension arrows
         if ho is not None:
-            C = len(ho)
-            arrow_len = disk_radius * 1.8
+            C = ho.shape[0] if ho.ndim == 2 else ho.shape[1]
             for ci in range(C):
-                offset     = ho[ci]
-                base_hole  = offset.copy()                  # world-frame base hole
-                disk_holes = centers + offset               # (N, 3)
+                if ho.ndim == 2:
+                    offsets    = np.broadcast_to(ho[ci], (N, 3))   # (N, 3) uniform
+                    base_hole  = ho[ci].copy()
+                else:
+                    offsets    = ho[:, ci, :]                       # (N, 3) per-disk
+                    base_hole  = ho[0, ci].copy()
+                disk_holes = centers + offsets                      # (N, 3)
                 cable_pts  = np.vstack([base_hole, disk_holes])
                 col = _CABLE_COLORS[ci % len(_CABLE_COLORS)]
 
@@ -173,6 +186,7 @@ def animate_slender_robot(
 
                 if _draw_arrows:
                     for i in range(N):
+                        arrow_len = disk_radii[i] * 1.8   # scale with per-disk radius
                         hole_i    = disk_holes[i]
                         prev_hole = base_hole if i == 0 else disk_holes[i - 1]
 
@@ -199,7 +213,7 @@ def animate_slender_robot(
                 f_world = R_i @ fc[t_idx, i, :3]
                 f_mag   = np.linalg.norm(f_world)
                 if f_mag > 1e-9:
-                    scale = min(f_mag * force_scale, disk_radius * 4) / f_mag
+                    scale = min(f_mag * force_scale, disk_radii[i] * 4) / f_mag
                     ax.quiver(*centers[i], *(f_world * scale),
                               color='orange', arrow_length_ratio=0.35, lw=1.8,
                               label='Net force' if i == 0 else '')

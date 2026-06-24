@@ -18,8 +18,8 @@ from robot3d.methods3D import SE3LieAlgebra
 import matplotlib.pyplot as plt
 from scipy.spatial.transform import Rotation as R
 from SlenderRobotVisualization import animate_slender_robot
-from BeamGenerator import generate_series_connection_map, generate_series_robot_disks
-from robot3d.contact.DiskSelfContact import SelfContact
+from BeamGenerator import generate_series_connection_map, generate_series_robot_disks, generate_series_robot_disks_tapper
+from robot3d.contact.DiskSelfContact import SelfAngleContact
 
 lie3 = SE3LieAlgebra()
 
@@ -38,7 +38,7 @@ if __name__ == "__main__":
    
     segment_length = 0.35 / n_elements
 
-    area_spine = 0.25 * 1e-4
+    area_spine = 0.4 * 1e-4
     r_spine = (area_spine / np.pi)**0.5
     alpha_c = 4/3 # For cylinder cross section
     
@@ -55,30 +55,33 @@ if __name__ == "__main__":
     print("moment_inertia", moment_inertia)
     print("disk_mass", disk_mass)
 
-    E_module = 5 * 1e6 * 1  #Pa
-    G_module = 6 * 1e6 * 1.2  #Pa
+    E_module = 50 * 1e6  #Pa
+    G_module = 60 * 1e6  #Pa
+
+    # TODO: k_s and k_t should vary across the arm
 
     k_s = np.array([alpha_c * G_module,alpha_c * G_module, E_module]) * area_spine 
-    k_t = np.array([E_module * Ix , E_module*Ix, G_module * Ixy]) 
+    k_t = np.array([E_module * Ix * 1.5 , E_module*Ix * 1.5, G_module * Ixy]) 
 
-    spring_damp = np.array([1.5, 1.5, 1.6])
-    tor_spring_damp = np.array([7e-5, 7e-5, 2e-4])
+    spring_damp = np.array([1.5, 1.5, 1.6]) * 27
+    tor_spring_damp = np.array([7e-5, 7e-5, 2e-4]) * 9
 
     print("k_s",k_s)
     print("k_t",k_t)
 
-
     
-    robot_collection = generate_series_robot_disks(
+    robot_collection = generate_series_robot_disks_tapper(
         n_disks = n_elements,
-        length_between_disks = segment_length,
+        base_length_between_disks = 0.02,
         initial_position = np.array([0.0, 0.0, 0.0]),
         initial_orientation = np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, -1.0]]),
-        mass = disk_mass,
-        moment_inertia = moment_inertia,
-        radius = disk_radius,
-        thickness = 0.025,
+        base_mass = disk_mass,
+        base_moment_inertia = moment_inertia,
+        base_radius = 0.035 * 0.5,
+        tapper_angle= 0.025
         )
+    
+
 
     cantilever_beam = ConnectedRigidRobots3D(robots=robot_collection)
 
@@ -88,12 +91,12 @@ if __name__ == "__main__":
         spring_damp,
         k_t,
         tor_spring_damp,
-        spring_original_length = segment_length,
+        # spring_original_length omitted → auto-measured from initial robot positions
     )
 
     simulator_beam = MutiRobotSimulator3D(
-        time_step=0.001,
-        duration=2,
+        time_step=0.0001,
+        duration=1.0,
         stepper = 'position_verlet',
         control_logic = None)
 
@@ -101,21 +104,28 @@ if __name__ == "__main__":
 
     gravity = GravityForce()
 
-    r_cable = disk_radius * 0.8
-    hole_offset = np.array([
-        [ r_cable,                      0.0,                     0.0],  # cable 1 at   0°
-        [-r_cable / 2,  r_cable * np.sqrt(3) / 2,               0.0],  # cable 2 at 120°
-        [-r_cable / 2, -r_cable * np.sqrt(3) / 2,               0.0],  # cable 3 at 240°
-    ])
+    # Cable hole directions on the unit circle at 0°, 120°, 240°
+    cable_directions = np.array([
+        [ 1.0,                 0.0,  0.0],
+        [-0.5,  np.sqrt(3)/2,        0.0],
+        [-0.5, -np.sqrt(3)/2,        0.0],
+    ])  # (C, 3)
+    cable_fraction = 0.8  # holes at 80% of each disk's own radius
+    disk_radii_arr = np.array([robot.radius for robot in robot_collection])  # (N,)
+    # Per-disk hole offsets: (N, C, 3) — each disk scaled by its own radius
+    hole_offset = disk_radii_arr[:, np.newaxis, np.newaxis] * cable_fraction * cable_directions[np.newaxis, :, :]
 
     def cable_control(time):
-        return np.array([1.0, 0.0, 0.0])  # cable 1 active at 0.1 N, cables 2 & 3 slack
+        if time < 0.5:
+            return np.array([40.0, 0.0, 0.0])  # cable 1 active at 0.1 N, cables 2 & 3 slack
+        else:
+            return np.array([40.0, 40.0, 0.0])
 
     cable_force = CableDrivenForce(control_input=cable_control, hole_offset=hole_offset)
     simulator_beam.add_external_force(gravity)
     simulator_beam.add_external_force(cable_force)
 
-    contact = SelfContact()
+    contact = SelfAngleContact()
 
 
 
@@ -203,17 +213,20 @@ if __name__ == "__main__":
     fig2.tight_layout()
     plt.show()
     
+    # Per-disk radii from the tapered robot (each disk stores its own radius)
+    disk_radii = np.array([robot.radius for robot in robot_collection])
+
     # ── 3-D animation ────────────────────────────────────────────────────────
     animate_slender_robot(
         time_collection   = time_collection,
         posture_collection= posture_collection,
         force_collection  = None,
-        disk_radius       = disk_radius,
+        disk_radius       = disk_radii,
         output_path       = 'slender_robot_simulation.mp4',  # falls back to .gif if ffmpeg missing
         fps               = 20,
         force_scale       = 0.5,
         skip_frames       = 5,
-        view_yaw          = 90.0,   # degrees — rotate camera around world Z
+        view_yaw          = 0.0,   # degrees — rotate camera around world Z
         view_pitch        = 0.0,    # degrees — camera elevation above horizontal
         view_roll         = 0.0,     # degrees — roll around the line of sight
     )

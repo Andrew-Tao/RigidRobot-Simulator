@@ -358,3 +358,25 @@ def log_SO3(R: np.ndarray) -> np.ndarray:
 
     # General case
     return theta / (2.0 * np.sin(theta)) * vee(R - R.T)
+
+
+def rot_x(degrees: float) -> np.ndarray:
+    a = np.deg2rad(degrees)
+    c, s = np.cos(a), np.sin(a)
+    return np.array([[1, 0,  0],
+                     [0, c, -s],
+                     [0, s,  c]], dtype=float)
+
+def rot_y(degrees: float) -> np.ndarray:
+    a = np.deg2rad(degrees)
+    c, s = np.cos(a), np.sin(a)
+    return np.array([[ c, 0, s],
+                     [ 0, 1, 0],
+                     [-s, 0, c]], dtype=float)
+
+def rot_z(degrees: float) -> np.ndarray:
+    a = np.deg2rad(degrees)
+    c, s = np.cos(a), np.sin(a)
+    return np.array([[c, -s, 0],
+                     [s,  c, 0],
+                     [0,  0, 1]], dtype=float)

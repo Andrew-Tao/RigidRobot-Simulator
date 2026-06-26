@@ -95,6 +95,7 @@ class MutiRobotSimulator3D():
 
         self._last_forces_k = forces_k
 
+
         #---------------------Position Verlet Integration----------------------
         if self.stepper == 'position_verlet':
             # Phase 1: advance ALL robots to k+1/2 simultaneously

@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 from scipy.spatial.transform import Rotation as R
 from SlenderRobotVisualization import animate_slender_robot
 from BeamGenerator import generate_series_connection_map, generate_series_robot_disks
-from robot3d.contact.DiskSelfContact import SelfContact
+from robot3d.contact.DiskSelfContact import SelfAngleContact
 
 lie3 = SE3LieAlgebra()
 
@@ -92,8 +92,8 @@ if __name__ == "__main__":
     )
 
     simulator_beam = MutiRobotSimulator3D(
-        time_step=0.001,
-        duration=2,
+        time_step=0.0001,
+        duration=1,
         stepper = 'position_verlet',
         control_logic = None)
 
@@ -115,7 +115,7 @@ if __name__ == "__main__":
     simulator_beam.add_external_force(gravity)
     simulator_beam.add_external_force(cable_force)
 
-    contact = SelfContact()
+    contact = SelfAngleContact()
 
 
 

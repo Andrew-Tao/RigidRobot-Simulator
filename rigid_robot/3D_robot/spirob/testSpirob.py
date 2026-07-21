@@ -26,6 +26,10 @@ lie3 = SE3LieAlgebra()
 
 if __name__ == "__main__":
 
+
+    video_name = "Spirob_10e5_Stiffness.mp4"  # Output video file name
+    duration = 0.5  # Duration of the simulation in seconds
+
     # Spirob_parameters
     n_elements = 25
     L = 0.35 
@@ -52,11 +56,11 @@ if __name__ == "__main__":
     Ixy = np.pi* r_spine**4 / 4
 
     moment_inertia = np.array([Ixx, Iyy, Izz])
-    print("moment_inertia", moment_inertia)
-    print("disk_mass", disk_mass)
+    #print("moment_inertia", moment_inertia)
+    #print("disk_mass", disk_mass)
 
-    E_module = 50 * 1e6  #Pa
-    G_module = 60 * 1e6  #Pa
+    E_module = 5 * 1e5  #Pa
+    G_module = 6 * 1e5  #Pa
 
     # TODO: k_s and k_t should vary across the arm
 
@@ -66,8 +70,8 @@ if __name__ == "__main__":
     spring_damp = np.array([1.5, 1.5, 1.6]) * 27
     tor_spring_damp = np.array([7e-5, 7e-5, 2e-4]) * 9
 
-    print("k_s",k_s)
-    print("k_t",k_t)
+   # print("k_s",k_s)
+   # print("k_t",k_t)
 
     
     robot_collection = generate_series_robot_disks_tapper(
@@ -96,7 +100,7 @@ if __name__ == "__main__":
 
     simulator_beam = MutiRobotSimulator3D(
         time_step=0.0001,
-        duration=1.0,
+        duration=duration,
         stepper = 'position_verlet',
         control_logic = None)
 
@@ -116,8 +120,8 @@ if __name__ == "__main__":
     hole_offset = disk_radii_arr[:, np.newaxis, np.newaxis] * cable_fraction * cable_directions[np.newaxis, :, :]
 
     def cable_control(time):
-        if time < 0.5:
-            return np.array([40.0, 0.0, 0.0])  # cable 1 active at 0.1 N, cables 2 & 3 slack
+        if time < 1.0:
+            return np.array([0.0, 40.0, 0.0])  # cable 1 active at 0.1 N, cables 2 & 3 slack
         else:
             return np.array([40.0, 40.0, 0.0])
 
@@ -222,7 +226,7 @@ if __name__ == "__main__":
         posture_collection= posture_collection,
         force_collection  = None,
         disk_radius       = disk_radii,
-        output_path       = 'slender_robot_simulation.mp4',  # falls back to .gif if ffmpeg missing
+        output_path       = video_name,  # falls back to .gif if ffmpeg missing
         fps               = 20,
         force_scale       = 0.5,
         skip_frames       = 5,
